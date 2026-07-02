@@ -23,10 +23,43 @@ class KkSpacing {
 class KkRadius {
   KkRadius._();
   static const sm = 6.0;   // 小标签
-  static const md = 10.0;  // 卡片
-  static const lg = 14.0;  // 大卡片
-  static const xl = 18.0;  // sheet 顶部
+  static const md = 12.0;  // 卡片
+  static const lg = 16.0;  // 大卡片(暖纸品牌偏柔和)
+  static const xl = 20.0;  // sheet 顶部
   static const pill = 999.0; // 胶囊
+}
+
+/// 高度 / 阴影体系(SSOT §1)
+///
+/// 暖纸品牌用暖色阴影(基色 #16130F),不用纯黑,避免发灰发脏。
+/// 卡片轻抬升,浮层重一档。Feed 行(分隔线式)不用阴影。
+class KkElevation {
+  KkElevation._();
+
+  /// 卡片:柔和暖色阴影 + 极浅贴地阴影(纸感抬升)
+  static const card = [
+    BoxShadow(
+      color: Color(0x1F16130F),
+      blurRadius: 24,
+      offset: Offset(0, 8),
+      spreadRadius: -8,
+    ),
+    BoxShadow(
+      color: Color(0x0F16130F),
+      blurRadius: 3,
+      offset: Offset(0, 1),
+    ),
+  ];
+
+  /// 浮层 / sheet / 底栏:更强一档
+  static const overlay = [
+    BoxShadow(
+      color: Color(0x2916130F),
+      blurRadius: 24,
+      offset: Offset(0, 8),
+      spreadRadius: -6,
+    ),
+  ];
 }
 
 /// 字号体系(三声部字体)
@@ -37,6 +70,15 @@ class KkRadius {
 ///   - 正文:系统 sans(Material 默认)
 class KkType {
   KkType._();
+
+  // 大标题 / 首屏 hero(衬线,编辑感)— SSOT §1
+  static const display = TextStyle(
+    fontFamily: 'NotoSerifSC',
+    fontSize: 30,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+    color: KkColors.t1,
+  );
 
   // 标题(衬线)— fontFamily 找不到时 Flutter 自动回退系统衬线
   static const h1 = TextStyle(

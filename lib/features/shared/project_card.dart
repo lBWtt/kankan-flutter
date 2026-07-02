@@ -74,6 +74,7 @@ class ProjectCard extends ConsumerWidget {
           color: KkColors.bgCard,
           borderRadius: BorderRadius.circular(KkRadius.lg),
           border: Border.all(color: KkColors.bd),
+          boxShadow: KkElevation.card,
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -136,7 +137,7 @@ class ProjectCard extends ConsumerWidget {
                             ? Icons.favorite
                             : Icons.favorite_border,
                         value: formatCount(likeCount),
-                        color: isLiked ? KkColors.coral : KkColors.t3,
+                        color: isLiked ? KkColors.like : KkColors.t3,
                         onTap: () => ref
                             .read(appStateProvider.notifier)
                             .toggleLike(project.id),

@@ -227,7 +227,7 @@ class PostDetailScreen extends ConsumerWidget {
               _IconStat(
                 icon: isLiked ? Icons.favorite : Icons.favorite_border,
                 value: formatCount(likeCount),
-                color: isLiked ? KkColors.coral : KkColors.t3,
+                color: isLiked ? KkColors.like : KkColors.t3,
                 onTap: () =>
                     ref.read(appStateProvider.notifier).toggleLike(post.id),
               ),

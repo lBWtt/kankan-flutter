@@ -389,14 +389,14 @@ class _CommentTile extends ConsumerWidget {
                                 ? Icons.favorite
                                 : Icons.favorite_border,
                             size: 14,
-                            color: isLiked ? KkColors.coral : KkColors.t3,
+                            color: isLiked ? KkColors.like : KkColors.t3,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             formatCount(likeCount),
                             style: KkType.mono.copyWith(
                               fontSize: 11,
-                              color: isLiked ? KkColors.coral : KkColors.t3,
+                              color: isLiked ? KkColors.like : KkColors.t3,
                             ),
                           ),
                         ],

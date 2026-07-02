@@ -45,4 +45,16 @@ class KkColors {
   static const bd = Color(0xFFE8E2D6);
   /// 分隔线
   static const divider = Color(0xFFEFE9DD);
+
+  // ── 语义色(SSOT §1,取自 Web 原型全色板)──
+  /// 点赞情感色(区别于 take 的珊瑚橙)。心用偏红,take 用珊瑚。
+  static const like = Color(0xFFE0245E);
+  /// 榜单第 1 / staff_pick
+  static const gold = Color(0xFFB68A2E);
+  /// 榜单第 2
+  static const silver = Color(0xFF9F9B92);
+  /// 榜单第 3
+  static const bronze = Color(0xFFB97F4F);
+  /// repo stars / 次要强调
+  static const amber = Color(0xFFA57423);
 }

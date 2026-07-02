@@ -438,7 +438,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
               _IconStat(
                 icon: isLiked ? Icons.favorite : Icons.favorite_border,
                 value: _fmtCount(likeCount),
-                color: isLiked ? KkColors.coral : null,
+                color: isLiked ? KkColors.like : null,
                 onTap: () => ref
                     .read(appStateProvider.notifier)
                     .toggleLike(project.id),
