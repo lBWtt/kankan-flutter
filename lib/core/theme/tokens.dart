@@ -36,18 +36,19 @@ class KkRadius {
 class KkElevation {
   KkElevation._();
 
-  /// 卡片:柔和暖色阴影 + 极浅贴地阴影(纸感抬升)
+  /// 卡片:与 Web 原型完全一致
+  /// (原型 CSS: 0 1px 2px rgba(22,19,15,.05), 0 12px 28px -18px rgba(22,19,15,.24))
   static const card = [
     BoxShadow(
-      color: Color(0x1F16130F),
-      blurRadius: 24,
-      offset: Offset(0, 8),
-      spreadRadius: -8,
+      color: Color(0x0D16130F), // rgba(22,19,15,.05)
+      blurRadius: 2,
+      offset: Offset(0, 1),
     ),
     BoxShadow(
-      color: Color(0x0F16130F),
-      blurRadius: 3,
-      offset: Offset(0, 1),
+      color: Color(0x3D16130F), // rgba(22,19,15,.24)
+      blurRadius: 28,
+      offset: Offset(0, 12),
+      spreadRadius: -18,
     ),
   ];
 

@@ -6,7 +6,6 @@ import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/parse_count.dart';
 import '../../core/widgets/tappable.dart';
-import '../../data/seed/mock_seed.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
@@ -14,7 +13,6 @@ import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
 import '../shared/avatar.dart';
-import 'widgets/contribution_heatmap.dart';
 
 /// 我的屏 — HANDOFF §6.10 真实数字(禁 ×200 编造)。
 ///
@@ -38,9 +36,6 @@ class MeScreen extends ConsumerWidget {
     // 真实统计(禁编造)
     final myProjects = projectRepo.byAuthor('me');
     final myPosts = postRepo.byAuthor('me');
-    final publishCount = myProjects.length + myPosts.length;
-    final savedCount = appState.savedProjectIds.length;
-    final takeawayCount = appState.savedTakeaways.length;
     final followingCount = (me?.followingIds ?? const <String>[]).length;
     final followerCount = (me?.followerIds ?? const <String>[]).length;
     final totalLikes = myProjects.fold<int>(0, (s, p) => s + p.likes) +
@@ -61,26 +56,7 @@ class MeScreen extends ConsumerWidget {
           totalLikes: totalLikes,
         ),
         const SizedBox(height: KkSpacing.lg),
-        // 三档统计
-        _statsRow(
-          context: context,
-          publishCount: publishCount,
-          savedCount: savedCount,
-          takeawayCount: takeawayCount,
-        ),
-        const SizedBox(height: KkSpacing.lg),
-        // 贡献热力图(HANDOFF §6.10 真实数据)
-        // 点击 → 个人活动页(Phase 3 Tier 3 大热力图 + 时间线)
-        Tappable(
-          onTap: () => context.push(KkRoutes.activity),
-          borderRadius: BorderRadius.circular(KkRadius.md),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
-            child: ContributionHeatmap(cells: mockHeatmapCells),
-          ),
-        ),
-        const SizedBox(height: KkSpacing.lg),
-        // 菜单
+        // 菜单(含「活跃」入口 → 活动页大热力图 + 时间线)
         _menu(context, appState.browseHistory.length, unreadCount),
       ],
     );
@@ -185,98 +161,6 @@ class MeScreen extends ConsumerWidget {
     );
   }
 
-  // ── 三档统计(发布 / 收藏 / 拿走)──
-  Widget _statsRow({
-    required BuildContext context,
-    required int publishCount,
-    required int savedCount,
-    required int takeawayCount,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
-      child: Row(
-        children: [
-          Expanded(
-            child: _statBlock(
-              context: context,
-              icon: Icons.publish_outlined,
-              label: '发布',
-              count: publishCount,
-              color: KkColors.teal,
-              onTap: () => context.push(KkRoutes.profile('me')),
-            ),
-          ),
-          const SizedBox(width: KkSpacing.md),
-          Expanded(
-            child: _statBlock(
-              context: context,
-              icon: Icons.bookmark_border_outlined,
-              label: '收藏',
-              count: savedCount,
-              color: KkColors.teal,
-              onTap: () {
-                // 切到收藏 Tab(branch index 2)
-                context.go(KkRoutes.library);
-              },
-            ),
-          ),
-          const SizedBox(width: KkSpacing.md),
-          Expanded(
-            child: _statBlock(
-              context: context,
-              icon: Icons.download_outlined,
-              label: '素材',
-              count: takeawayCount,
-              color: KkColors.coral, // 素材 = take 概念,保留珊瑚橙
-              onTap: () => context.go(KkRoutes.library),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _statBlock({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required int count,
-    required Color color,
-    VoidCallback? onTap,
-  }) {
-    return Tappable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(KkRadius.md),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: KkSpacing.md,
-          vertical: KkSpacing.md,
-        ),
-        decoration: BoxDecoration(
-          color: KkColors.bgCard,
-          borderRadius: BorderRadius.circular(KkRadius.md),
-          border: Border.all(color: KkColors.bd),
-          boxShadow: KkElevation.card,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(height: KkSpacing.xs),
-            Text(
-              formatCount(count),
-              style: KkType.monoLg.copyWith(color: color),
-            ),
-            Text(
-              label,
-              style: KkType.bodySm.copyWith(color: KkColors.t3, fontSize: 11),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ── 菜单 ──
   Widget _menu(BuildContext context, int browseHistoryCount, int unreadCount) {
     return Container(
@@ -289,6 +173,12 @@ class MeScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
+          _menuItem(
+            icon: Icons.insights_outlined,
+            label: '活跃',
+            onTap: () => context.push(KkRoutes.activity),
+          ),
+          const Divider(height: 1, color: KkColors.divider, indent: 56),
           _menuItem(
             icon: Icons.history_outlined,
             label: '浏览历史',
