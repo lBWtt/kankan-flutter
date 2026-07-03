@@ -171,7 +171,7 @@ class _SavedTab extends StatelessWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(
-        KkSpacing.lg, KkSpacing.sm, KkSpacing.lg, KkSpacing.xxl,
+        KkSpacing.lg, KkSpacing.sm, KkSpacing.lg, KkSpacing.xxxl + KkSpacing.md,
       ),
       itemCount: effective.length,
       separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.md),

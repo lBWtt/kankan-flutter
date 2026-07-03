@@ -48,7 +48,7 @@ class MeScreen extends ConsumerWidget {
     final unreadCount = appState.unreadNotifIds.length;
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
+      padding: const EdgeInsets.only(bottom: KkSpacing.xxxl),
       children: [
         // 顶栏:标题 + 设置入口
         _topBar(context),
@@ -125,6 +125,7 @@ class MeScreen extends ConsumerWidget {
           color: KkColors.bgCard,
           borderRadius: BorderRadius.circular(KkRadius.lg),
           border: Border.all(color: KkColors.bd),
+          boxShadow: KkElevation.card,
         ),
         child: Row(
           children: [
@@ -255,6 +256,7 @@ class MeScreen extends ConsumerWidget {
           color: KkColors.bgCard,
           borderRadius: BorderRadius.circular(KkRadius.md),
           border: Border.all(color: KkColors.bd),
+          boxShadow: KkElevation.card,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -283,6 +285,7 @@ class MeScreen extends ConsumerWidget {
         color: KkColors.bgCard,
         borderRadius: BorderRadius.circular(KkRadius.md),
         border: Border.all(color: KkColors.bd),
+        boxShadow: KkElevation.card,
       ),
       child: Column(
         children: [

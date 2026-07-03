@@ -173,6 +173,7 @@ class _RecommendFeed extends ConsumerWidget {
     }
 
     return ListView.builder(
+      padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
       itemCount: posts.length,
       itemBuilder: (context, i) {
         final post = posts[i];
@@ -229,6 +230,7 @@ class _FollowingFeed extends ConsumerWidget {
     }
 
     return ListView.builder(
+      padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
       itemCount: posts.length,
       itemBuilder: (context, i) {
         final post = posts[i];
