@@ -65,15 +65,19 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
         // loading 时锁住 Tab,避免在骨架屏期间切 feed。
         IgnorePointer(ignoring: _loading, child: _tabBar()),
         Expanded(
-          child: _loading
-              ? _skeletonList()
-              : TabBarView(
-                  controller: _tabCtrl,
-                  children: const [
-                    _RecommendFeed(),
-                    _FollowingFeed(),
-                  ],
-                ),
+          child: ColoredBox(
+            // 任务②:列表区 bg2 底,PostCard bgCard "浮"起来
+            color: KkColors.bgSubtle,
+            child: _loading
+                ? _skeletonList()
+                : TabBarView(
+                    controller: _tabCtrl,
+                    children: const [
+                      _RecommendFeed(),
+                      _FollowingFeed(),
+                    ],
+                  ),
+          ),
         ),
       ],
     );
@@ -92,17 +96,17 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
           ),
           child: ProjectCardSkeleton(),
         ),
-        SizedBox(height: KkSpacing.md),
+        SizedBox(height: KkSpacing.lg),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: KkSpacing.lg),
           child: ProjectCardSkeleton(),
         ),
-        SizedBox(height: KkSpacing.md),
+        SizedBox(height: KkSpacing.lg),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: KkSpacing.lg),
           child: ProjectCardSkeleton(),
         ),
-        SizedBox(height: KkSpacing.md),
+        SizedBox(height: KkSpacing.lg),
         PostCardSkeleton(),
       ],
     );
@@ -117,7 +121,17 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
       ),
       child: Row(
         children: [
+          // 任务②:标题后 6×6 teal 品牌点
           Text('发现', style: KkType.h1),
+          const SizedBox(width: 7),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: KkColors.teal,
+              shape: BoxShape.circle,
+            ),
+          ),
           const Spacer(),
           Tappable(
             onTap: () => context.push(KkRoutes.search),

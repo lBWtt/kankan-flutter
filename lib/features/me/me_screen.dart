@@ -71,7 +71,17 @@ class MeScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
+          // 任务②:标题后 6×6 teal 品牌点
           Text('我的', style: KkType.h1),
+          const SizedBox(width: 7),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: KkColors.teal,
+              shape: BoxShape.circle,
+            ),
+          ),
           const Spacer(),
           Tappable(
             onTap: () => context.push(KkRoutes.settings),

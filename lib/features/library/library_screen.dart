@@ -82,15 +82,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           child: _tabBar(),
         ),
         Expanded(
-          child: _loading
-              ? _skeletonList()
-              : TabBarView(
-                  controller: _tabCtrl,
-                  children: [
-                    _SavedTab(effective: effective),
-                    const _TakeawayTab(),
-                  ],
-                ),
+          child: ColoredBox(
+            // 任务②:列表区 bg2 底,卡片 bgCard "浮"起来
+            color: KkColors.bgSubtle,
+            child: _loading
+                ? _skeletonList()
+                : TabBarView(
+                    controller: _tabCtrl,
+                    children: [
+                      _SavedTab(effective: effective),
+                      const _TakeawayTab(),
+                    ],
+                  ),
+          ),
         ),
       ],
     );
@@ -106,7 +110,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         vertical: KkSpacing.sm,
       ),
       itemCount: 3,
-      separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.md),
+      separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.lg),
       itemBuilder: (_, __) => const ProjectCardSkeleton(),
     );
   }
@@ -119,7 +123,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       ),
       child: Row(
         children: [
+          // 任务②:标题后 6×6 teal 品牌点
           Text('收藏', style: KkType.h1),
+          const SizedBox(width: 7),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: KkColors.teal,
+              shape: BoxShape.circle,
+            ),
+          ),
           const Spacer(),
           Tappable(
             onTap: () => context.push(KkRoutes.search),
@@ -174,7 +188,7 @@ class _SavedTab extends StatelessWidget {
         KkSpacing.lg, KkSpacing.sm, KkSpacing.lg, KkSpacing.xxxl + KkSpacing.md,
       ),
       itemCount: effective.length,
-      separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.md),
+      separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.lg),
       itemBuilder: (context, i) => ProjectCard(project: effective[i]),
     );
   }
@@ -250,17 +264,16 @@ class _TakeawayTabState extends ConsumerState<_TakeawayTab> {
                 vertical: KkSpacing.sm,
               ),
               decoration: BoxDecoration(
-                color: selected ? KkColors.teal : KkColors.bgCard,
+                // 任务②:激活态 bg2 底 + bd 边框 + t1 加粗(原型克制风)
+                color: selected ? KkColors.bgSubtle : Colors.transparent,
                 borderRadius: BorderRadius.circular(KkRadius.pill),
-                border: Border.all(
-                  color: selected ? KkColors.teal : KkColors.bd,
-                ),
+                border: Border.all(color: KkColors.bd),
               ),
               child: Center(
                 child: Text(
                   label,
                   style: KkType.bodySm.copyWith(
-                    color: selected ? Colors.white : KkColors.t2,
+                    color: selected ? KkColors.t1 : KkColors.t2,
                     fontWeight:
                         selected ? FontWeight.w600 : FontWeight.normal,
                   ),

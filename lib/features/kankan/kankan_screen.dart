@@ -78,16 +78,20 @@ class _KankanScreenState extends ConsumerState<KankanScreen>
         IgnorePointer(ignoring: _loading, child: _tabBar()),
         IgnorePointer(ignoring: _loading, child: _domainFilterBar()),
         Expanded(
-          child: _loading
-              ? _skeletonContent()
-              : TabBarView(
-                  controller: _tabCtrl,
-                  children: [
-                    _ProjectList(sort: 'featured', domain: _domainFilter),
-                    _ProjectList(sort: 'hot', domain: _domainFilter),
-                    _ProjectList(sort: 'new', domain: _domainFilter),
-                  ],
-                ),
+          child: ColoredBox(
+            // 任务②:列表区 bg2 底,卡片 bgCard "浮"起来,编辑层次
+            color: KkColors.bgSubtle,
+            child: _loading
+                ? _skeletonContent()
+                : TabBarView(
+                    controller: _tabCtrl,
+                    children: [
+                      _ProjectList(sort: 'featured', domain: _domainFilter),
+                      _ProjectList(sort: 'hot', domain: _domainFilter),
+                      _ProjectList(sort: 'new', domain: _domainFilter),
+                    ],
+                  ),
+          ),
         ),
       ],
     );
@@ -103,7 +107,7 @@ class _KankanScreenState extends ConsumerState<KankanScreen>
         KkSpacing.xxl,
       ),
       itemCount: 3,
-      separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.md),
+      separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.lg),
       itemBuilder: (_, __) => const ProjectCardSkeleton(),
     );
   }
@@ -116,7 +120,17 @@ class _KankanScreenState extends ConsumerState<KankanScreen>
       ),
       child: Row(
         children: [
+          // 任务②:标题后 6×6 teal 品牌点(签名细节)
           Text('看看', style: KkType.h1),
+          const SizedBox(width: 7),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: KkColors.teal,
+              shape: BoxShape.circle,
+            ),
+          ),
           const SizedBox(width: KkSpacing.sm),
           // 真实项目数(禁编造)
           Consumer(builder: (context, ref, _) {
@@ -186,17 +200,16 @@ class _KankanScreenState extends ConsumerState<KankanScreen>
                 vertical: KkSpacing.sm,
               ),
               decoration: BoxDecoration(
-                color: selected ? KkColors.teal : KkColors.bgCard,
+                // 任务②:激活态 bg2 底 + bd 边框 + t1 加粗(原型克制风,非 teal 实心)
+                color: selected ? KkColors.bgSubtle : Colors.transparent,
                 borderRadius: BorderRadius.circular(KkRadius.pill),
-                border: Border.all(
-                  color: selected ? KkColors.teal : KkColors.bd,
-                ),
+                border: Border.all(color: KkColors.bd),
               ),
               child: Center(
                 child: Text(
                   label,
                   style: KkType.bodySm.copyWith(
-                    color: selected ? Colors.white : KkColors.t2,
+                    color: selected ? KkColors.t1 : KkColors.t2,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
@@ -233,7 +246,7 @@ class _ProjectList extends ConsumerWidget {
         KkSpacing.lg, KkSpacing.sm, KkSpacing.lg, KkSpacing.xxl,
       ),
       itemCount: list.length,
-      separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.md),
+      separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.lg),
       itemBuilder: (context, i) => ProjectCard(project: list[i]),
     );
   }
