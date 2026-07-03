@@ -240,11 +240,11 @@ class ProjectCard extends ConsumerWidget {
   }
 }
 
-// ── 封面(装饰性 CoverArt 背景 + 领域图标 / play 按钮)──
+// ── 封面(真实封面图 + CoverArt 回退)──
 //
-// Phase 3 Tier 4 接入:替换原 mint 色块 + 图标占位,改用 CoverArt 五图案装饰背景
-// (HANDOFF §5 装饰用,默认 KkColors.teal 底,无 coral)。外层 ProjectCard Container
-// 已 clipBehavior.antiAlias,_Cover 不再单独 ClipRRect。
+// 任务①真实封面图:有 URL → Image.network(loadingBuilder/errorBuilder 回退 CoverArt);
+// 无 URL → CoverArt 占位。video 叠 play 按钮;无封面时叠领域图标。
+// 外层 ProjectCard Container 已 clipBehavior.antiAlias,_Cover 不再单独 ClipRRect。
 class _Cover extends StatelessWidget {
   final Project project;
   final double? width;
@@ -263,6 +263,10 @@ class _Cover extends StatelessWidget {
     final first = hasMedia ? project.resultData.media.first : null;
     final isImage = hasMedia && first!.type == 'image';
     final isVideo = hasMedia && first!.type == 'video';
+    // 封面 URL:image 用 first.url;video 用 first.poster;无 media → null(走 CoverArt 占位)
+    final coverUrl = isImage
+        ? first!.url
+        : (isVideo ? first!.poster : null);
 
     final pattern = isCompact ? 'grid' : _domainPattern(project.domain);
     final domainIcon = _domainIcon(project.domain);
@@ -273,52 +277,35 @@ class _Cover extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 装饰背景:CoverArt(默认 KkColors.teal 底,5 种图案之一)
-          //
-          // TODO(Phase 5+):接入 cached_network_image 包后,有图项目(isImage==true)
-          // 此处替换为 CachedNetworkImage 渲染真实首图,不再用 CoverArt 占位:
-          //
-          //   CachedNetworkImage(
-          //     imageUrl: project.resultData.media.first.url,
-          //     placeholder: (_, __) =>
-          //         CoverArt(pattern: pattern, width: w, height: h),
-          //     errorWidget: (_, __, ___) =>
-          //         CoverArt(pattern: pattern, width: w, height: h),
-          //     fit: BoxFit.cover,
-          //     width: w,
-          //     height: h,
-          //   )
-          //
-          // 当前限制(Phase 5-a 子代理确认):
-          //   · Project model 无 coverUrl 字段(见 lib/domain/models/project.dart),
-          //     现阶段首图 URL 来源是 project.resultData.media.first.url(MediaItem.url,
-          //     type=='image' 时为图片直链,见 media_item.dart)。
-          //   · Phase 5+ 若给 Project 加 coverUrl 字段,改用 project.coverUrl 即可。
-          //   · 无图项目(isImage==false)仍走 CoverArt 占位,不接入 CachedNetworkImage。
-          //   · 无 Dart/Flutter SDK,无法加 cached_network_image 依赖验证 pubspec.yaml,
-          //     故此处仅加文档注释 + 占位逻辑,运行时仍渲染 CoverArt(不破坏现有渲染)。
-          CoverArt(pattern: pattern, width: w, height: h),
-          // 半透明压暗遮罩,让前景图标 / play 按钮更突出
+          // 封面:有 URL → Image.network(loadingBuilder/errorBuilder 回退 CoverArt);
+          // 无 URL → CoverArt 占位(任务①真实封面图,不引入新依赖)
+          if (coverUrl != null && coverUrl.isNotEmpty)
+            Image.network(
+              coverUrl,
+              fit: BoxFit.cover,
+              width: w,
+              height: h,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return CoverArt(pattern: pattern, width: w, height: h);
+              },
+              errorBuilder: (context, error, stackTrace) =>
+                  CoverArt(pattern: pattern, width: w, height: h),
+            )
+          else
+            CoverArt(pattern: pattern, width: w, height: h),
+          // 半透明压暗遮罩,让前景 play / domain icon 更突出
           Container(color: Colors.black.withAlpha(20)),
-          // 前景:video 居中 play 按钮;image / 无 media 居中领域图标
+          // 前景:video 叠 play 按钮(真图上);无封面时叠领域图标(有真图不叠,图本身即视觉)
           if (isVideo)
             Center(
               child: Icon(Icons.play_circle_outline,
                   size: 48, color: Colors.white.withAlpha(220)),
             )
-          else
+          else if (coverUrl == null || coverUrl.isEmpty)
             Center(
               child: Icon(domainIcon,
                   size: 36, color: Colors.white.withAlpha(200)),
-            ),
-          // 图片角标:仅 full 模式有图时右上角小 image_outlined 表示「有图」
-          // (compact 56×56 太小,放不下角标)
-          if (isImage && !isCompact)
-            Positioned(
-              top: KkSpacing.sm,
-              right: KkSpacing.sm,
-              child: Icon(Icons.image_outlined,
-                  size: 14, color: Colors.white.withAlpha(180)),
             ),
         ],
       ),

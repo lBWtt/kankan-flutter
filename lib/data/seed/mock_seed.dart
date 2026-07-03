@@ -97,7 +97,7 @@ final mockProjects = <Project>[
       media: [
         MediaItem(
           type: 'image',
-          url: 'https://picsum.photos/seed/cybertea1/800/1000',
+          url: 'https://sfile.chatglm.cn/images-ppt/a5fb2321b9d5.png',
           alt: '赛博朋克茶馆 霓虹灯笼',
         ),
         MediaItem(
@@ -135,7 +135,7 @@ final mockProjects = <Project>[
     domain: 'ai_image',
     resultData: const ResultData(
       media: [
-        MediaItem(type: 'image', url: 'https://picsum.photos/seed/jieqi1/800/600'),
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/179c3d3b3d1b.jpg'),
         MediaItem(type: 'image', url: 'https://picsum.photos/seed/jieqi2/800/600'),
       ],
       io: IoBlock(
@@ -173,7 +173,7 @@ final mockProjects = <Project>[
         MediaItem(
           type: 'video',
           url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-          poster: 'https://picsum.photos/seed/dawn1/800/450',
+          poster: 'https://sfile.chatglm.cn/images-ppt/bfb88838ab60.jpeg',
           durationSec: 8,
           alt: '城市黎明延时',
         ),
@@ -200,7 +200,7 @@ final mockProjects = <Project>[
         MediaItem(
           type: 'video',
           url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-          poster: 'https://picsum.photos/seed/inkfish/800/450',
+          poster: 'https://sfile.chatglm.cn/images-ppt/8540030f8ce1.jpg',
           durationSec: 5,
         ),
         MediaItem(type: 'image', url: 'https://picsum.photos/seed/inkfish_frame/800/450'),
@@ -231,7 +231,7 @@ final mockProjects = <Project>[
     domain: 'web',
     resultData: const ResultData(
       media: [
-        MediaItem(type: 'image', url: 'https://picsum.photos/seed/navweb1/1000/600', alt: '首页截图'),
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/47a9a604f473.png', alt: '首页截图'),
         MediaItem(type: 'image', url: 'https://picsum.photos/seed/navweb2/1000/600', alt: '分类页截图'),
       ],
     ),
@@ -254,7 +254,7 @@ final mockProjects = <Project>[
     domain: 'web',
     resultData: const ResultData(
       media: [
-        MediaItem(type: 'image', url: 'https://picsum.photos/seed/portfolio1/1000/640'),
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/40c16eb70ea8.jpeg'),
       ],
     ),
     actions: const [
@@ -277,7 +277,7 @@ final mockProjects = <Project>[
     domain: 'app',
     resultData: const ResultData(
       media: [
-        MediaItem(type: 'image', url: 'https://picsum.photos/seed/app_record1/600/1000', alt: '主界面'),
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/2cb8926bbbea.png', alt: '主界面'),
         MediaItem(type: 'image', url: 'https://picsum.photos/seed/app_record2/600/1000', alt: '统计页'),
         MediaItem(type: 'image', url: 'https://picsum.photos/seed/app_record3/600/1000', alt: '设置页'),
       ],
@@ -302,7 +302,7 @@ final mockProjects = <Project>[
     domain: 'app',
     resultData: const ResultData(
       media: [
-        MediaItem(type: 'image', url: 'https://picsum.photos/seed/pomodoro1/600/1000'),
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/d9b8b7fca13d.jpeg'),
         MediaItem(type: 'image', url: 'https://picsum.photos/seed/pomodoro2/600/1000'),
       ],
     ),
@@ -325,6 +325,9 @@ final mockProjects = <Project>[
     authorId: 'chen',
     domain: 'tool',
     resultData: const ResultData(
+      media: [
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/14c467b11f9e.png'),
+      ],
       io: IoBlock(
         input: 'python compress.py ./photos --quality 85 --max-width 1920',
         output: '✓ 234 张图片已压缩\n  原始: 1.2 GB\n  压缩后: 187 MB\n  压缩比: 84%',
@@ -353,6 +356,9 @@ final mockProjects = <Project>[
     authorId: 'chen',
     domain: 'tool',
     resultData: const ResultData(
+      media: [
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/4eb33bec5485.png'),
+      ],
       io: IoBlock(
         input: 'md2pdf report.md -o report.pdf --theme github',
         output: '✓ 生成 report.pdf (12 页, 340 KB)\n✓ 使用主题: github\n✓ 代码高亮: 已应用',
@@ -383,6 +389,9 @@ final mockProjects = <Project>[
     authorId: 'zhao',
     domain: 'opensource',
     resultData: const ResultData(
+      media: [
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/dbb5816557c3.jpg'),
+      ],
       repo: RepoInfo(
         name: 'flutter_heatmap',
         fullName: 'zhao/flutter_heatmap',
@@ -410,6 +419,9 @@ final mockProjects = <Project>[
     authorId: 'zhao',
     domain: 'opensource',
     resultData: const ResultData(
+      media: [
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/4bdca2a67305.png'),
+      ],
       repo: RepoInfo(
         name: 'rn-perf-monitor',
         fullName: 'zhao/rn-perf-monitor',
@@ -440,6 +452,9 @@ final mockProjects = <Project>[
     authorId: 'wang',
     domain: 'prompt',
     resultData: const ResultData(
+      media: [
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/967e52879b04.jpg'),
+      ],
       io: IoBlock(
         input: '你是一位资深代码评审。请评审以下代码,关注:\n1. 可读性\n2. 潜在 bug\n3. 性能\n4. 安全\n\n代码:\n```python\ndef add(a, b):\n    return a + b\n```',
         output: '## 评审结果\n\n### 可读性\n函数名 `add` 清晰,参数名 `a` `b` 过于简略,建议改为 `first` `second` 或更具语义的名字。\n\n### 潜在 bug\n未做类型检查,若传入字符串会触发字符串拼接而非数值加法。\n\n### 性能\n无问题。\n\n### 安全\n无问题。',
@@ -468,6 +483,9 @@ final mockProjects = <Project>[
     authorId: 'wang',
     domain: 'prompt',
     resultData: const ResultData(
+      media: [
+        MediaItem(type: 'image', url: 'https://sfile.chatglm.cn/images-ppt/e733e22680f6.jpg'),
+      ],
       io: IoBlock(
         input: '帮我把这段想法整理成文章:\n"今天用了 cursor 写代码 感觉 ai 补全比 copilot 好很多 特别是跨文件理解 但有时候它会乱改 我觉得关键是 review 它的 diff"',
         output: '# Cursor vs Copilot:跨文件理解是关键\n\n今天试用 Cursor 写代码,最直观的感受是 AI 补全比 Copilot 好很多,尤其是跨文件理解能力...\n\n## 优点\n- 跨文件上下文\n- ...\n\n## 注意点\n- review diff 是关键\n- ...',

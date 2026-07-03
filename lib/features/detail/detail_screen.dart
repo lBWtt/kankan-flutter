@@ -480,12 +480,9 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
 
 // ── 顶部封面(详情页 Hero 接收端,镜像 ProjectCard._Cover 结构)──
 //
-// Phase 4:与 project_card.dart _full 模式的 `'project-cover-{project.id}'`
-// tag 配对。CoverArt + 半透明遮罩 + 领域图标三段式,与卡片视觉一致,
-// 保证 Hero 飞行态无缝衔接。height 220 比 ProjectCard 的 180 略高,详情页
-// 视觉层级更突出(Hero 自动插值尺寸,无跳变)。
-// 不引入 image_outlined 角标(详情页有 MediaCarousel 轮播区,顶部 cover
-// 仅装饰用)。
+// 任务①真实封面图:与 ProjectCard._Cover 同源(Image.network + CoverArt 回退)。
+// height 220 比 ProjectCard 的 180 略高,详情页视觉层级更突出(Hero 自动插值尺寸)。
+// 与卡片同 URL → Hero 飞行态无缝衔接。
 class _DetailCover extends StatelessWidget {
   final Project project;
 
@@ -493,25 +490,55 @@ class _DetailCover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ai_video 域图标是 play_circle_outline(形似播放钮)。仅当项目有真实
-    // 视频时才渲染该播放控件样图标;无视频时封面留白,杜绝播放控件残留
-    // (HANDOFF §2.1 无视频不渲染播放控件)。其他域图标非播放控件,保留。
-    final hasVideo =
-        project.resultData.media.any((m) => m.type == 'video');
-    final showDomainIcon = project.domain != 'ai_video' || hasVideo;
+    final hasMedia = project.resultData.media.isNotEmpty;
+    final first = hasMedia ? project.resultData.media.first : null;
+    final isImage = hasMedia && first!.type == 'image';
+    final isVideo = hasMedia && first!.type == 'video';
+    // 封面 URL:与 ProjectCard._Cover 同源(image→url, video→poster, 无→null)
+    final coverUrl = isImage
+        ? first!.url
+        : (isVideo ? first!.poster : null);
+    final pattern = _domainPattern(project.domain);
+
     return SizedBox(
       width: double.infinity,
       height: 220,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CoverArt(
-            pattern: _domainPattern(project.domain),
-            width: double.infinity,
-            height: 220,
-          ),
+          // 封面:有 URL → Image.network(loadingBuilder/errorBuilder 回退 CoverArt);
+          // 无 URL → CoverArt 占位(与 ProjectCard._Cover 同源,Hero 无缝衔接)
+          if (coverUrl != null && coverUrl.isNotEmpty)
+            Image.network(
+              coverUrl,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: 220,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return CoverArt(
+                    pattern: pattern, width: double.infinity, height: 220);
+              },
+              errorBuilder: (context, error, stackTrace) => CoverArt(
+                  pattern: pattern, width: double.infinity, height: 220),
+            )
+          else
+            CoverArt(
+              pattern: pattern,
+              width: double.infinity,
+              height: 220,
+            ),
           Container(color: Colors.black.withAlpha(20)),
-          if (showDomainIcon)
+          // 前景:video 叠 play 按钮(真图上);无封面时叠领域图标(有真图不叠)
+          if (isVideo)
+            Center(
+              child: Icon(
+                Icons.play_circle_outline,
+                size: 56,
+                color: Colors.white.withAlpha(220),
+              ),
+            )
+          else if (coverUrl == null || coverUrl.isEmpty)
             Center(
               child: Icon(
                 _domainIcon(project.domain),
