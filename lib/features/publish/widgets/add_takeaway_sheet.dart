@@ -7,7 +7,7 @@ import '../../../domain/models/models.dart';
 import 'link_type_detector.dart';
 
 /// "+" 底部 sheet 三选一 — HANDOFF §4:
-/// "+"点开底部 sheet 三选一(贴文本/传文件/放链接),"再加一样"可重复 → 多个拿走物。
+/// "+"点开底部 sheet 三选一(贴文本/传文件/放链接),"再加一样"可重复 → 多个素材。
 ///
 /// 每选一样 → 产出 TakeAction(copy/download)或 GoAction → 加入 publish_draft.actions。
 /// 任意组合,可 2 个 go + 1 个 take + 1 个 how(测试用 how 暂不在此加,Phase 3 接)。
@@ -60,7 +60,7 @@ class _AddTakeawaySheetState extends State<AddTakeawaySheet> {
             ),
           ),
         ),
-        const Text('拿走物', style: KkType.h2),
+        const Text('素材', style: KkType.h2),
         const SizedBox(height: KkSpacing.lg),
         _option(
           icon: Icons.text_snippet_outlined,

@@ -20,7 +20,7 @@ import '../shared/project_card.dart';
 ///   - 收藏  appState.savedProjectIds → ProjectCard.compact
 ///   - 我拿走的  appState.savedTakeaways,按 文本/文件/链接 三档子分类
 ///
-/// 「我拿走的」是 HANDOFF §6.3 强需求(Web 版完全没有):拿走了得有地方找回。
+/// 「我拿走的」是 HANDOFF §6.3 强需求(Web 版完全没有):存下了得有地方找回。
 /// 按 kind 分类展示,点条目能跳回原项目,长按删除。
 ///
 /// 计数铁律(HANDOFF §6.10):tab 标签上的数字 = 真实数组长度,不放大。
@@ -72,8 +72,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             ...repo.byAuthor('lin'),
           ].take(4).toList()
         : realSaved;
-    final savedCount = effective.length;
-    final takeawayCount = appState.savedTakeaways.length;
 
     return Column(
       children: [
@@ -81,10 +79,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         // loading 时锁住 Tab,避免在骨架屏期间切 Tab。
         IgnorePointer(
           ignoring: _loading,
-          child: _tabBar(
-            savedCount: savedCount,
-            takeawayCount: takeawayCount,
-          ),
+          child: _tabBar(),
         ),
         Expanded(
           child: _loading
@@ -135,7 +130,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     );
   }
 
-  Widget _tabBar({required int savedCount, required int takeawayCount}) {
+  Widget _tabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       decoration: const BoxDecoration(
@@ -150,9 +145,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         indicatorSize: TabBarIndicatorSize.label,
         indicatorColor: KkColors.teal,
         indicatorWeight: 2,
-        tabs: [
-          Tab(text: '收藏 $savedCount'),
-          Tab(text: '拿走 $takeawayCount'),
+        tabs: const [
+          Tab(text: '收藏'),
+          Tab(text: '素材'),
         ],
       ),
     );
@@ -174,10 +169,13 @@ class _SavedTab extends StatelessWidget {
       );
     }
 
-    return ListView.builder(
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(
+        KkSpacing.lg, KkSpacing.sm, KkSpacing.lg, KkSpacing.xxl,
+      ),
       itemCount: effective.length,
-      itemBuilder: (context, i) =>
-          ProjectCard(project: effective[i], compact: true),
+      separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.md),
+      itemBuilder: (context, i) => ProjectCard(project: effective[i]),
     );
   }
 }
@@ -210,7 +208,7 @@ class _TakeawayTabState extends ConsumerState<_TakeawayTab> {
 
     return Column(
       children: [
-        _filterBar(counts: _counts(all)),
+        _filterBar(),
         Expanded(
           child: list.isEmpty
               ? ListView(
@@ -229,17 +227,7 @@ class _TakeawayTabState extends ConsumerState<_TakeawayTab> {
     );
   }
 
-  // 各 kind 的真实计数
-  Map<String, int> _counts(List<SavedTakeaway> all) {
-    return {
-      'all': all.length,
-      'text': all.where((t) => t.kind == 'text').length,
-      'file': all.where((t) => t.kind == 'file').length,
-      'link': all.where((t) => t.kind == 'link').length,
-    };
-  }
-
-  Widget _filterBar({required Map<String, int> counts}) {
+  Widget _filterBar() {
     return SizedBox(
       height: 52,
       child: ListView.separated(
@@ -253,7 +241,6 @@ class _TakeawayTabState extends ConsumerState<_TakeawayTab> {
         itemBuilder: (context, i) {
           final (label, value) = _filters[i];
           final selected = _filter == value;
-          final count = counts[value] ?? 0;
           return Tappable(
             onTap: () => setState(() => _filter = value),
             borderRadius: BorderRadius.circular(KkRadius.pill),
@@ -271,7 +258,7 @@ class _TakeawayTabState extends ConsumerState<_TakeawayTab> {
               ),
               child: Center(
                 child: Text(
-                  '$label $count',
+                  label,
                   style: KkType.bodySm.copyWith(
                     color: selected ? Colors.white : KkColors.t2,
                     fontWeight:
@@ -456,7 +443,7 @@ class _TakeawayTile extends ConsumerWidget {
       case 'link':
         return (Icons.link_outlined, '链接', KkColors.teal);
       default:
-        return (Icons.download_outlined, '拿走', KkColors.coral);
+        return (Icons.download_outlined, '素材', KkColors.coral);
     }
   }
 }

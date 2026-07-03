@@ -5,7 +5,7 @@ import 'result_data.dart';
 
 part 'project.freezed.dart';
 
-/// HANDOFF §1 项目(重)—— 有成果 + 拿走物。进库、有详情页。
+/// HANDOFF §1 项目(重)—— 有成果 + 素材。进库、有详情页。
 ///
 /// 与 Post(动态,轻)二分:纯文字心得只能发成 Post,不能发成 Project。
 ///

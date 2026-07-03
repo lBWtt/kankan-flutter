@@ -8,7 +8,7 @@ import '../../core/widgets/tappable.dart';
 ///
 /// HANDOFF §1 核心结构:动态/项目二分(不可动摇)。
 ///   - 发动态(轻):文字 + 可选图 + 话题 + 引用项目。不进库、无详情页。
-///   - 发作品(项目)(重):有成果 + 拿走物。进库、有详情页。
+///   - 发作品(项目)(重):有成果 + 素材。进库、有详情页。
 ///
 /// Phase 2:"发作品"接真实 publish 屏(push /publish)。
 /// "发动态"Phase 3 接 compose 屏。
@@ -66,7 +66,7 @@ class PublishEntrySheet extends StatelessWidget {
             context,
             icon: Icons.work_outline,
             title: '发作品(项目)',
-            hint: '成果 + 拿走物',
+            hint: '成果 + 素材',
             onTap: () {
               // sheet 先不关,让 router 的回调决定(回调里会 pop)
               onPublishProject?.call();

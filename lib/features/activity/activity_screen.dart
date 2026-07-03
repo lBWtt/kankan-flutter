@@ -547,7 +547,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         type: 'takeaway',
         icon: Icons.download_done_outlined,
         color: KkColors.coral,
-        text: '拿走了《${t.projectTitle}》的 ${t.label ?? ''}',
+        text: '存下了《${t.projectTitle}》的 ${t.label ?? ''}',
         createdAtMs: t.savedAtMs,
       ));
     }

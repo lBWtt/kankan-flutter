@@ -2,7 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'saved_takeaway.freezed.dart';
 
-/// HANDOFF §6.3 「我拿走的」内容库 — 拿走了得有地方找回。
+/// HANDOFF §6.3 「我拿走的」内容库 — 存下了得有地方找回。
 ///
 /// Web 版完全没有这个,Flutter 端从零做对。按 文本/文件/链接 三档分类
 /// (对应 TakeAction.takeKind == 'copy' / 'download' / GoAction 的 url):

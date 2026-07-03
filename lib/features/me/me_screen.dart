@@ -224,9 +224,9 @@ class MeScreen extends ConsumerWidget {
             child: _statBlock(
               context: context,
               icon: Icons.download_outlined,
-              label: '拿走',
+              label: '素材',
               count: takeawayCount,
-              color: KkColors.coral, // 拿走 = 珊瑚橙(HANDOFF §5)
+              color: KkColors.coral, // 素材 = take 概念,保留珊瑚橙
               onTap: () => context.go(KkRoutes.library),
             ),
           ),

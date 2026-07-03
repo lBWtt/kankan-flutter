@@ -9,7 +9,7 @@ import '../../core/theme/tokens.dart';
 ///   - generic  通用("暂无内容")
 ///   - feed     流空("还没有动态"/"关注的人还没发")
 ///   - saved    收藏空("还没收藏")
-///   - takeaway 拿走空("还没拿走过东西")
+///   - takeaway 拿走空("还没存过素材")
 ///
 /// 零旁白(HANDOFF §3):只陈述事实,不写"快去发现更多吧"之类引导。
 class EmptyState extends StatelessWidget {
@@ -82,8 +82,8 @@ class EmptyState extends StatelessWidget {
       case EmptyStateVariant.takeaway:
         return const _EmptyMeta(
           icon: Icons.download_outlined,
-          title: '还没拿走过东西',
-          subtitle: '拿走的内容在这里找回',
+          title: '还没存过素材',
+          subtitle: '存下的素材在这里找回',
         );
     }
   }

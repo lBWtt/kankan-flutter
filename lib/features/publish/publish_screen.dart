@@ -19,7 +19,7 @@ import 'widgets/publish_preview.dart';
 ///   - 传图/视频 → 成果(media),视频自动排前,首张作封面
 ///   - 写介绍 → 作者的话
 ///   - 贴文本 → take(复制) / 传文件 → take(下载) / 放链接 → 当场识别 GitHub/App Store/网址 → go
-///   - "+"点开底部 sheet 三选一,"再加一样"可重复 → 多个拿走物
+///   - "+"点开底部 sheet 三选一,"再加一样"可重复 → 多个素材
 ///   - 工作流链接(可选) → how(Phase 3 接)
 ///   - 全程零旁白、不选类型
 ///
@@ -51,7 +51,7 @@ class PublishScreen extends ConsumerWidget {
                     _summaryField(ref),
                     // 成果区:传图/视频
                     _mediaSection(context, ref, draft.media),
-                    // 拿走物/actions(已加的列表 + "+" 按钮)
+                    // 素材/actions(已加的列表 + "+" 按钮)
                     _actionsSection(context, ref, draft.actions),
                     // 作者的话
                     _authorNoteField(ref),
@@ -175,7 +175,7 @@ class PublishScreen extends ConsumerWidget {
     );
   }
 
-  // ── 拿走物/actions ──
+  // ── 素材/actions ──
   Widget _actionsSection(
     BuildContext context,
     WidgetRef ref,
@@ -189,7 +189,7 @@ class PublishScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 已加的拿走物列表
+          // 已加的素材列表
           for (var i = 0; i < actions.length; i++)
             _ActionChip(
               action: actions[i],
@@ -220,7 +220,7 @@ class PublishScreen extends ConsumerWidget {
                   const Icon(Icons.add, size: 18, color: KkColors.teal),
                   const SizedBox(width: KkSpacing.xs),
                   Text(
-                    '加拿走物',
+                    '加素材',
                     style: KkType.bodySm.copyWith(color: KkColors.teal),
                   ),
                 ],

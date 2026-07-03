@@ -7,7 +7,7 @@ part 'post.freezed.dart';
 /// HANDOFF §1 动态(轻)—— 文字 + 可选图 + 话题 + 引用项目。
 ///
 /// 与 Project 二分:不进库、无详情页。长短都行,心得帖也在这。
-/// 没有 resultData(无成果区)、没有 actions(无拿走物)。
+/// 没有 resultData(无成果区)、没有 actions(无素材)。
 @freezed
 abstract class Post with _$Post {
   const factory Post({
