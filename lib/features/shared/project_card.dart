@@ -102,6 +102,14 @@ class ProjectCard extends ConsumerWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  // 任务④:招牌 take 行(can-takeaway)——summary 下、作者行上。
+                  // 有 TakeAction → 珊瑚橙浅底 chip;否则有 GoAction → 退化 teal「去看看」;
+                  // 都无(纯 HowAction / 空)→ 整行不显示。禁 if(artifactType) 分支(SPEC §6.1)。
+                  if (project.actions.whereType<TakeAction>().isNotEmpty ||
+                      project.actions.whereType<GoAction>().isNotEmpty) ...[
+                    const SizedBox(height: KkSpacing.sm),
+                    _TakeawayChip(actions: project.actions),
+                  ],
                   if (showAuthor) ...[
                     const SizedBox(height: KkSpacing.md),
                     Tappable(
@@ -402,6 +410,126 @@ class _Stat extends StatelessWidget {
         const SizedBox(width: 4),
         Text(value, style: KkType.mono.copyWith(fontSize: 11, color: color)),
       ],
+    );
+  }
+}
+
+// ── 任务④:招牌 take 行(can-takeaway row)──
+//
+// 在 summary 下、作者行上,显示「能拿走什么 · 怎么用」——本产品最核心 UX,
+// 让人一眼看到「能拿到什么、怎么用」,直接驱动「想做/想拿走」意图。原型每张卡都有。
+//
+// 渲染规则(禁 if(artifactType) 硬编码分支,SPEC §6.1——用 whereType 模式匹配):
+// - 有 TakeAction → 珊瑚橙浅底 chip(coralMint 底 + coral 图标/文字);
+//   图标按 takeKind:copy → copy_outlined / download → download_outlined;
+//   文字 = label · hint(任务④ Part B,hint null 只显 label,向后兼容)。
+// - 无 TakeAction 有 GoAction → 退化 teal「去看看」chip(mint 底 + teal 文字 + ↗)。
+// - 都无(纯 HowAction / 空)→ 整行不显示(调用方 whereType 判断;此 widget 防御返回 shrink)。
+//
+// 铁律(SPEC §6):
+// - coral 只给 take(go 退化用 teal/mint,不用 coral)。
+// - 无「拿走」二字(靠图标 + 名词表意),零旁白,无 emoji。
+// - 触控 ≥44pt:此 chip 是「招牌描述」纯展示,点击由卡片整体承担(已 Tappable),
+//   故 chip 自身不可点,不强制 44pt(44pt 仅约束可交互元素)。
+class _TakeawayChip extends StatelessWidget {
+  final List<ActionItem> actions;
+
+  const _TakeawayChip({required this.actions});
+
+  @override
+  Widget build(BuildContext context) {
+    // 禁 if(artifactType) 硬编码分支(SPEC §6.1)——用 whereType 模式匹配。
+    final take = actions.whereType<TakeAction>().firstOrNull;
+    if (take != null) return _takeChip(take);
+    final go = actions.whereType<GoAction>().firstOrNull;
+    if (go != null) return _goChip();
+    return const SizedBox.shrink();
+  }
+
+  Widget _takeChip(TakeAction take) {
+    final isCopy = take.takeKind == 'copy';
+    final icon = isCopy ? Icons.copy_outlined : Icons.download_outlined;
+    final label = take.label ?? (isCopy ? '复制' : '下载');
+    final hasHint = take.hint != null && take.hint!.isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: KkSpacing.sm,
+        vertical: 6.0,
+      ),
+      decoration: BoxDecoration(
+        // 珊瑚橙浅底(SPEC §6.2:coral 只给 take)
+        color: KkColors.coralMint,
+        borderRadius: BorderRadius.circular(KkRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: KkColors.coral),
+          const SizedBox(width: KkSpacing.xs),
+          Text(
+            label,
+            style: KkType.bodySm.copyWith(
+              fontSize: 12,
+              color: KkColors.coral,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (hasHint) ...[
+            Text(
+              ' · ',
+              style: KkType.bodySm.copyWith(
+                fontSize: 12,
+                color: KkColors.coral.withAlpha(140),
+              ),
+            ),
+            Flexible(
+              child: Text(
+                take.hint!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: KkType.bodySm.copyWith(
+                  fontSize: 12,
+                  color: KkColors.coral.withAlpha(180),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _goChip() {
+    // 退化:teal「去看看」(mint 底 + teal 文字 + ↗)。不用 coral(SPEC §6.2)。
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: KkSpacing.sm,
+        vertical: 6.0,
+      ),
+      decoration: BoxDecoration(
+        color: KkColors.mint,
+        borderRadius: BorderRadius.circular(KkRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '去看看',
+            style: KkType.bodySm.copyWith(
+              fontSize: 12,
+              color: KkColors.teal,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.arrow_outward,
+            size: 14,
+            color: KkColors.teal,
+          ),
+        ],
+      ),
     );
   }
 }

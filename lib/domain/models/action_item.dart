@@ -26,16 +26,24 @@ sealed class ActionItem {
 ///
 /// 珊瑚橙。按钮无"拿走"字,靠图标(复制 / 下载)表意。
 /// 成功后 takeawayCount +1(HANDOFF §2.2,与点赞同源体感)。
+///
+/// [hint] (任务④):一句真实具体的「怎么用」(如「粘进对话框就能用」),
+/// 在 ProjectCard take chip 显示成 `label · hint`。null 时只显 label(向后兼容)。
 @immutable
 class TakeAction extends ActionItem {
   final String source;
   final String takeKind; // 'copy' | 'download'
   final String? label;
 
+  /// 任务④:真实具体的用法提示(「粘进…」「下载后…」),驱动「想拿走」意图。
+  /// 不编造计数,只描述用法。null → 卡片只显 label。
+  final String? hint;
+
   const TakeAction({
     required this.source,
     required this.takeKind, // 'copy' or 'download'
     this.label,
+    this.hint,
   });
 }
 
