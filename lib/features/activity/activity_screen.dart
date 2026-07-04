@@ -72,15 +72,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         leading: const KkBackButton(),
         titleSpacing: 0,
         title: Text('我的活动', style: KkType.h1),
-        actions: [
-          // 日历入口(mock,no-op)
-          Tappable(
-            onTap: () {},
-            child: const Icon(Icons.calendar_month_outlined,
-                size: 22, color: KkColors.t1),
-          ),
-          const SizedBox(width: KkSpacing.sm),
-        ],
+        // 原日历入口是 no-op 死按钮(无日历页),移除——宁可没按钮,不放假按钮。
       ),
       body: _loading
           ? _skeletonContent()

@@ -12,6 +12,7 @@ import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
+import '../../router/routes.dart';
 import '../shared/avatar.dart';
 
 /// 资料编辑屏 — 编辑 'me' 的名字 / 简介 / 关注领域 pills + 头像占位 + 真实统计。
@@ -375,15 +376,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         children: [
           Expanded(
             child: _statBlock('关注', following, onTap: () {
-              // TODO(Phase4): 接 follows 屏(关注列表)
-              // context.push(KkRoutes.follows('me', 'following'));
+              // 接通 follows 屏(?type= 深链到对应 tab,router 已解析 queryParameters['type'])
+              context.push('${KkRoutes.follows('me')}?type=following');
             }),
           ),
           _vDivider(),
           Expanded(
             child: _statBlock('粉丝', followers, onTap: () {
-              // TODO(Phase4): 接 follows 屏(粉丝列表)
-              // context.push(KkRoutes.follows('me', 'followers'));
+              context.push('${KkRoutes.follows('me')}?type=followers');
             }),
           ),
           _vDivider(),
