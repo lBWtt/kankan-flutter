@@ -20,7 +20,6 @@ import 'widgets/author_note.dart';
 import 'widgets/io_block_view.dart';
 import 'widgets/media_carousel.dart';
 import 'widgets/repo_card.dart';
-import '../shared/comment_actions_sheet.dart';
 import '../shared/comment_thread.dart';
 import '../shared/share_sheet.dart';
 
@@ -137,17 +136,13 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
                   showHeader: true,
                   // F-4:发评论后回调,触发本屏 rebuild → 底栏「心得 N」
                   // 从同源 commentsFor 重读,计数与 header 实时一致。
+                  // 任务⑨:删除/编辑也走此回调(内部 _doDelete/_submitEdit 同步
+                  // mockComments,底栏 commentsFor 重读与新内容一致)。
                   onChanged: () {
                     if (mounted) setState(() {});
                   },
-                  onCommentLongPress: (c) => showCommentActionsSheet(
-                    context,
-                    comment: c,
-                    hostType: 'project',
-                    hostId: project.id,
-                    isOwn: c.authorId == 'me',
-                    onCopy: () {},
-                  ),
+                  // 任务⑨:长按 → 动作 sheet 收进 CommentThread 内部(_showActions),
+                  // 接通复制/编辑(own)/删除(own)/打开链接。不再外部传 onCommentLongPress。
                 ),
               ),
             ),

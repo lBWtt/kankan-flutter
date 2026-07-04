@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
@@ -38,6 +39,9 @@ Future<void> showCommentActionsSheet(
   VoidCallback? onReport,
   VoidCallback? onCopy,
   VoidCallback? onReply,
+  /// 任务⑨:评论内容里提取的 URL(可选)。非空时 sheet 多显「打开链接」,
+  /// 点 url_launcher.launchUrl 真开浏览器。空则不显此项。
+  String? linkUrl,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -59,6 +63,7 @@ Future<void> showCommentActionsSheet(
       onReport: onReport,
       onCopy: onCopy,
       onReply: onReply,
+      linkUrl: linkUrl,
     ),
   );
 }
@@ -92,6 +97,9 @@ class CommentActionsSheet extends ConsumerWidget {
   /// 回复回调(外层做输入框聚焦 + 预填 @用户名)
   final VoidCallback? onReply;
 
+  /// 任务⑨:评论内提取的 URL(可选)。非空时显「打开链接」tile。
+  final String? linkUrl;
+
   const CommentActionsSheet({
     super.key,
     required this.comment,
@@ -103,6 +111,7 @@ class CommentActionsSheet extends ConsumerWidget {
     this.onReport,
     this.onCopy,
     this.onReply,
+    this.linkUrl,
   });
 
   @override
@@ -131,6 +140,15 @@ class CommentActionsSheet extends ConsumerWidget {
       label: '复制内容',
       onTap: () => _copyContent(context),
     ));
+    // 任务⑨:评论内含 URL 时显「打开链接」(url_launcher 真开浏览器)。
+    // 无 URL 不显(避免假按钮)。tone normal — 打开链接不是 take,不用 coral。
+    if (linkUrl != null && linkUrl!.isNotEmpty) {
+      actionTiles.add(_ActionTile(
+        icon: Icons.open_in_new,
+        label: '打开链接',
+        onTap: () => _openLink(context),
+      ));
+    }
     if (isOwn && onEdit != null) {
       actionTiles.add(_ActionTile(
         icon: Icons.edit_outlined,
@@ -260,6 +278,37 @@ class CommentActionsSheet extends ConsumerWidget {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  // ── 任务⑨:打开评论内的链接 ──
+  // 先 pop 本 sheet(避免浏览器回来时 sheet 还在),再 launchUrl 真开系统浏览器。
+  // mode externalApplication:不占 app 内 WebView,符合「打开链接」语义。
+  // 失败(无可用浏览器/URL 非法)→ SnackBar 一句话,零旁白。
+  Future<void> _openLink(BuildContext context) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final url = linkUrl!;
+    Navigator.of(context).pop();
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      messenger?.showSnackBar(
+        const SnackBar(
+          content: Text('链接无法打开'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok) {
+      messenger?.showSnackBar(
+        const SnackBar(
+          content: Text('链接无法打开'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   // ── 通用关闭 + 回调(回复/编辑/删除/举报)──

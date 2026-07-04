@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
@@ -273,10 +274,11 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                         children: [
                           Expanded(child: _posterBottom()),
                           const SizedBox(width: KkSpacing.md),
-                          const CustomPaint(
-                            painter: _QrPlaceholderPainter(),
-                            size: Size(56, 56),
-                          ),
+                          // 任务⑧:真二维码(QrImageView 编码 widget.shareUrl)。
+                          // 深模块(t1 #16130F) + 白底 + 内边距构成 quiet zone,
+                          // 保证海报图案背景上仍可扫。包白色圆角小盒(KkRadius.sm)
+                          // 进一步隔离彩色/图案背景,对比度优先于配色(SPEC §6)。
+                          _posterQr(),
                         ],
                       ),
                     ],
@@ -328,6 +330,38 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
           ),
         ],
       ],
+    );
+  }
+
+  // ── 海报二维码(真·可扫描)──
+  // 任务⑧:替换 _QrPlaceholderPainter(画得像但编码不了真实 URL)。
+  // 包白色圆角小盒:海报该区域紧邻图案背景 + 品牌色文字,白盒隔离保证
+  // 深模块 + 白底 + 足够 quiet zone,任何扫描器都能读出 shareUrl。
+  // 不套用 teal/coral 到模块(对比度优先于配色,SPEC §6 任务⑧铁律)。
+  Widget _posterQr() {
+    return Container(
+      width: 64,
+      height: 64,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(KkRadius.sm),
+      ),
+      child: QrImageView(
+        data: widget.shareUrl,
+        size: 56,
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white,
+        eyeStyle: const QrEyeStyle(
+          eyeShape: QrEyeShape.square,
+          color: Color(0xFF16130F),
+        ),
+        dataModuleStyle: const QrDataModuleStyle(
+          dataModuleShape: QrDataModuleShape.square,
+          color: Color(0xFF16130F),
+        ),
+        errorCorrectionLevel: QrErrorCorrectLevel.M,
+      ),
     );
   }
 
@@ -635,62 +669,4 @@ class _InkPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _InkPainter old) =>
       old.currentPattern != currentPattern;
-}
-
-// ───────────────────────────────────────────────────────────────────
-// 二维码占位 — 56x56 方块网格(不引入真二维码库)
-// 3 个定位符 + 中间固定 seed 散点,模拟二维码视觉
-// ───────────────────────────────────────────────────────────────────
-class _QrPlaceholderPainter extends CustomPainter {
-  const _QrPlaceholderPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
-    const cells = 7;
-    final cell = size.width / cells;
-    final darkPaint = Paint()..color = KkColors.t1;
-    final lightPaint = Paint()..color = KkColors.bgCard;
-
-    // 3 个定位符(左上、右上、左下),每个 3x3 实心 + 中心 1x1 空
-    const corners = <Offset>[
-      Offset(0, 0),
-      Offset(4, 0),
-      Offset(0, 4),
-    ];
-    for (final c in corners) {
-      final x = c.dx * cell;
-      final y = c.dy * cell;
-      // 3x3 实心
-      canvas.drawRect(
-        Rect.fromLTWH(x, y, cell * 3, cell * 3),
-        darkPaint,
-      );
-      // 中心 1x1 用 bgCard 覆盖(模拟二维码定位符空心)
-      canvas.drawRect(
-        Rect.fromLTWH(x + cell, y + cell, cell, cell),
-        lightPaint,
-      );
-    }
-
-    // 中间散点(固定 seed 保证视觉稳定)
-    final rng = math.Random(42);
-    for (var r = 0; r < cells; r++) {
-      for (var c = 0; c < cells; c++) {
-        // 跳过三个定位符的 3x3 区域
-        final inCorner =
-            (r < 3 && c < 3) || (r < 3 && c >= 4) || (r >= 4 && c < 3);
-        if (inCorner) continue;
-        if (rng.nextBool()) {
-          canvas.drawRect(
-            Rect.fromLTWH(c * cell, r * cell, cell, cell),
-            darkPaint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _QrPlaceholderPainter old) => false;
 }

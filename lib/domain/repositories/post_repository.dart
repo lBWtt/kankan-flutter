@@ -30,6 +30,17 @@ class PostRepository {
   void addComment(String hostType, String hostId, Comment comment) {
     _comments.add(comment);
   }
+
+  /// 任务⑨:删除评论(对称 addComment,与 ProjectRepository 同源 mockComments)。
+  void removeComment(String commentId) {
+    _comments.removeWhere((c) => c.id == commentId);
+  }
+
+  /// 任务⑨:更新评论(编辑)。与 ProjectRepository 同源 mockComments。
+  void updateComment(Comment updated) {
+    final i = _comments.indexWhere((c) => c.id == updated.id);
+    if (i >= 0) _comments[i] = updated;
+  }
 }
 
 final postRepositoryProvider = Provider<PostRepository>((ref) {
