@@ -31,6 +31,13 @@ class PostRepository {
     _comments.add(comment);
   }
 
+  /// 任务⑪:发动态 — 写入新 Post 到内存 mockPosts 头部(对称 addComment)。
+  /// compose 屏发送时调用,discover 推荐/关注流读同一份,新动态出现在顶部
+  /// (按 createdAtMs 降序排)。内存级,Phase 5 接后端时替换。
+  void addPost(Post post) {
+    _posts.insert(0, post);
+  }
+
   /// 任务⑨:删除评论(对称 addComment,与 ProjectRepository 同源 mockComments)。
   void removeComment(String commentId) {
     _comments.removeWhere((c) => c.id == commentId);

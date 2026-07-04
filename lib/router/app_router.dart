@@ -16,6 +16,7 @@ import '../features/notifications/notifications_screen.dart';
 import '../features/post_detail/post_detail_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/profile_edit/profile_edit_screen.dart';
+import '../features/publish/compose_screen.dart';
 import '../features/publish/publish_entry_sheet.dart';
 import '../features/publish/publish_screen.dart';
 import '../features/ranking/ranking_screen.dart';
@@ -64,6 +65,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: const PublishScreen(),
+        ),
+      ),
+
+      // ── 顶层路由:发动态(任务⑪ compose 屏,对应 Post)──
+      GoRoute(
+        path: KkRoutes.compose,
+        pageBuilder: (context, state) => _kkPage(
+          context: context,
+          state: state,
+          child: const ComposeScreen(),
         ),
       ),
 
@@ -316,6 +327,7 @@ CustomTransitionPage<void> _kkPage({
 
 /// 显示发布入口 sheet(二选一:发动态 / 发作品)。
 /// 选"发作品" → push 到 /publish。
+/// 选"发动态" → push 到 /compose(任务⑪)。
 void _showPublishEntrySheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
@@ -324,6 +336,10 @@ void _showPublishEntrySheet(BuildContext context) {
       onPublishProject: () {
         Navigator.pop(context);
         context.push(KkRoutes.publish);
+      },
+      onPublishPost: () {
+        Navigator.pop(context);
+        context.push(KkRoutes.compose);
       },
     ),
   );

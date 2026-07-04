@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
-import '../../core/utils/parse_count.dart';
-import '../../core/widgets/kk_back_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
@@ -13,9 +11,9 @@ import '../../domain/repositories/project_repository.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
-import '../shared/avatar.dart';
 import '../shared/empty_state.dart';
 import '../shared/post_card.dart';
+import '../shared/profile_header.dart';
 import '../shared/project_card.dart';
 
 /// 个人主页屏 — HANDOFF §6.5 真路由 + 三 Tab + 关注/拉黑/举报。
@@ -78,38 +76,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
     return Scaffold(
       backgroundColor: KkColors.bg,
-      appBar: AppBar(
-        backgroundColor: KkColors.bg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: const KkBackButton(),
-        titleSpacing: 0,
-        title: Text(
-          user?.name ?? widget.userId,
-          style: KkType.h3,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        actions: [
-          Tappable(
-            onTap: () => _showMoreSheet(context),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: KkSpacing.lg),
-              child: Icon(Icons.more_horiz, size: 22, color: KkColors.t1),
-            ),
-          ),
-        ],
-      ),
+      // 任务⑩A:头部对齐 me_screen 视觉语言(渐变 banner + 大头像 + inline 统计)。
+      // 不用 AppBar(会盖住 banner 渐变),返回/更多按钮浮在 banner 右上角。
       body: Column(
         children: [
-          // 个人信息卡
-          _profileCard(
+          // 头部:ProfileHeader(banner + 大头像 + 名字 + banner 右上槽 +
+          // inline 统计行 关注/粉丝/获赞 + 右侧关注/编辑按钮)
+          ProfileHeader(
             user: user,
-            following: following,
-            followers: followers,
+            userId: widget.userId,
+            followingCount: following,
+            followerCount: followers,
             totalLikes: totalLikes,
-            isFollowing: isFollowing,
+            onTapFollowing: () =>
+                context.push(KkRoutes.follows(widget.userId)),
+            onTapFollowers: () => context.push(
+                '${KkRoutes.follows(widget.userId)}?type=followers'),
+            bannerActions: [
+              // 返回(浮在 banner 上,半透明白底圆)
+              BannerIconButton(
+                icon: Icons.arrow_back,
+                onTap: () {
+                  if (context.canPop()) context.pop();
+                },
+              ),
+              // 更多(拉黑/举报 sheet)
+              BannerIconButton(
+                icon: Icons.more_horiz,
+                onTap: () => _showMoreSheet(context),
+              ),
+            ],
+            // 右侧操作槽:自己 → 编辑资料;他人 → 关注/已关注
+            actionSlot: _isMe ? _editButton() : _followButton(isFollowing),
           ),
+          const SizedBox(height: KkSpacing.sm),
           // Tab 栏
           _tabBar(projects.length, posts.length),
           // Tab 内容
@@ -128,97 +128,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
-  Widget _profileCard({
-    required KkUser? user,
-    required int following,
-    required int followers,
-    required int totalLikes,
-    required bool isFollowing,
-  }) {
-    return Container(
-      margin: const EdgeInsets.all(KkSpacing.lg),
-      padding: const EdgeInsets.all(KkSpacing.lg),
-      decoration: BoxDecoration(
-        color: KkColors.bgCard,
-        borderRadius: BorderRadius.circular(KkRadius.lg),
-        border: Border.all(color: KkColors.bd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              KkAvatar(userId: widget.userId, user: user, size: 64),
-              const SizedBox(width: KkSpacing.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      user?.name ?? widget.userId,
-                      style: KkType.h2,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (user?.bio != null && user!.bio!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        user.bio!,
-                        style: KkType.bodySm.copyWith(color: KkColors.t3),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: KkSpacing.lg),
-          // 真实数字三档(等宽)
-          Row(
-            children: [
-              Tappable(
-                onTap: () =>
-                    context.push(KkRoutes.follows(widget.userId)),
-                child: _countBlock('关注', following),
-              ),
-              const SizedBox(width: KkSpacing.xxl),
-              Tappable(
-                onTap: () => context.push(
-                    '${KkRoutes.follows(widget.userId)}?type=followers'),
-                child: _countBlock('粉丝', followers),
-              ),
-              const SizedBox(width: KkSpacing.xxl),
-              _countBlock('获赞', totalLikes),
-              const Spacer(),
-              // 关注 / 编辑按钮
-              if (_isMe)
-                _editButton()
-              else
-                _followButton(isFollowing),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _countBlock(String label, int value) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(formatCount(value), style: KkType.monoLg),
-        Text(
-          label,
-          style: KkType.bodySm.copyWith(color: KkColors.t3, fontSize: 11),
-        ),
-      ],
-    );
-  }
+  // 任务⑩A:旧 _profileCard / _countBlock 已删,头部复用共享 ProfileHeader
+  // (渐变 banner + 大头像 + inline 统计 + 右侧关注/编辑按钮)。
 
   Widget _followButton(bool isFollowing) {
     return Tappable(

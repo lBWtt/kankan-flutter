@@ -16,6 +16,9 @@ class KkRoutes {
   /// 项目发布 — HANDOFF §4
   static const publish = '/publish';
 
+  /// 发动态 — 任务⑪:compose 屏(轻内容,对应 Post)
+  static const compose = '/compose';
+
   // ── P0:实现线索(主信号下游,深链可直达)──
   /// 实现线索页 — 详情页「想看怎么做」入口(ZAI_PLAYBOOK P0)。
   /// 告诉用户作品怎么做出来的:来源 / 工具 / AI 思路 / 相关作品 / 订阅。
