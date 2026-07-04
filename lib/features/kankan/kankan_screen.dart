@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/skeletons.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../providers/remote_project_provider.dart';
 import '../../router/routes.dart';
 import '../shared/empty_state.dart';
 import '../shared/project_card.dart';
@@ -231,23 +233,125 @@ class _ProjectList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 后端接入开关(--dart-define=USE_REMOTE=true):真数据走 remote,否则 mock。
+    // 默认 mock,不带 flag 构建行为完全不变。
+    if (AppConfig.useRemote) return _remoteList(context, ref);
+    return _mockList(context, ref);
+  }
+
+  // ── mock 数据源(内存 repo,默认)──
+  Widget _mockList(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(projectRepositoryProvider);
     final list = repo.sorted(sort, domain: domain);
-
     if (list.isEmpty) {
       return ListView(
         children: const [EmptyState(variant: EmptyStateVariant.generic)],
       );
     }
+    return _cardListView(list, showAuthor: true);
+  }
 
-    // 瀑布流式(简化:单列,每个 card 自适应高度)
+  // ── 真数据源(GET /projects,AsyncValue 三态)──
+  Widget _remoteList(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(remoteProjectsProvider);
+    return async.when(
+      loading: () => _skeleton(),
+      error: (e, _) => _RemoteError(
+        onRetry: () => ref.invalidate(remoteProjectsProvider),
+      ),
+      data: (all) {
+        // 后端不透传前端 domain/hot 排序,这里客户端兜底(见 DTO 分叉注释)。
+        var list = domain == null
+            ? all
+            : all.where((p) => p.domain == domain).toList();
+        list = _applySort(list);
+        if (list.isEmpty) {
+          return ListView(
+            children: const [EmptyState(variant: EmptyStateVariant.generic)],
+          );
+        }
+        // 真数据卡片隐藏作者行(后端卡片不展开作者)。
+        return _cardListView(list, showAuthor: false);
+      },
+    );
+  }
+
+  List<Project> _applySort(List<Project> src) {
+    final list = List<Project>.of(src);
+    switch (sort) {
+      case 'hot':
+        list.sort((a, b) => b.takeawayCount.compareTo(a.takeawayCount));
+      case 'new':
+        list.sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+      case 'featured':
+      default:
+        break; // 保持后端返回顺序
+    }
+    return list;
+  }
+
+  Widget _cardListView(List<Project> list, {required bool showAuthor}) {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(
         KkSpacing.lg, KkSpacing.sm, KkSpacing.lg, KkSpacing.xxl,
       ),
       itemCount: list.length,
       separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.lg),
-      itemBuilder: (context, i) => ProjectCard(project: list[i]),
+      itemBuilder: (context, i) =>
+          ProjectCard(project: list[i], showAuthor: showAuthor),
+    );
+  }
+
+  Widget _skeleton() {
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(
+        KkSpacing.lg, KkSpacing.sm, KkSpacing.lg, KkSpacing.xxl,
+      ),
+      itemCount: 3,
+      separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.lg),
+      itemBuilder: (_, __) => const ProjectCardSkeleton(),
+    );
+  }
+}
+
+// 真数据加载失败:一句事实 + 重试(零旁白,不写"哎呀出错了")。
+class _RemoteError extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _RemoteError({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        const SizedBox(height: 120),
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('连不上服务器',
+                  style: KkType.body.copyWith(color: KkColors.t2)),
+              const SizedBox(height: KkSpacing.md),
+              Tappable(
+                onTap: onRetry,
+                borderRadius: BorderRadius.circular(KkRadius.pill),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: KkSpacing.lg,
+                    vertical: KkSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: KkColors.bgSubtle,
+                    borderRadius: BorderRadius.circular(KkRadius.pill),
+                    border: Border.all(color: KkColors.bd),
+                  ),
+                  child: Text('重试',
+                      style: KkType.bodySm.copyWith(color: KkColors.teal)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

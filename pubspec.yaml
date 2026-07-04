@@ -21,6 +21,9 @@ dependencies:
   # ── 路由:go_router ──
   go_router: ^14.0.0
 
+  # ── 后端接入:HTTP client(看看 feed 等真数据,--dart-define=USE_REMOTE=true 启用)──
+  dio: ^5.4.0
+
   # ── 声明式动画 ──
   flutter_animate: ^4.0.0
 
