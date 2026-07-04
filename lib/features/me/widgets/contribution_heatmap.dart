@@ -26,18 +26,24 @@ class ContributionHeatmap extends StatelessWidget {
   /// 是否显示统计行
   final bool showStats;
 
+  /// 任务③:无外层 Container(无 bgCard/边框/padding),把内容直接嵌入
+  /// 调用方自己的卡片里(me_screen 贡献卡)。默认 false 保持向后兼容
+  /// (activity_screen 仍用自带容器的老用法)。
+  final bool bare;
+
   const ContributionHeatmap({
     super.key,
     required this.cells,
     this.showLegend = true,
     this.showStats = true,
+    this.bare = false,
   });
 
   @override
   Widget build(BuildContext context) {
     if (cells.isEmpty) return const SizedBox.shrink();
 
-    // 排序:旧 → 新
+    // 排序:旧 → 新(先 .toList() 再 sort,铁律 5)
     final sorted = [...cells]
       ..sort((a, b) => a.dateMs.compareTo(b.dateMs));
 
@@ -52,6 +58,49 @@ class ContributionHeatmap extends StatelessWidget {
     // 列数:按 7 天分组
     final weeks = (sorted.length / 7).ceil();
 
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showStats) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('贡献', style: KkType.bodySm.copyWith(color: KkColors.t3)),
+              const SizedBox(width: KkSpacing.sm),
+              Text(
+                '$totalContributions',
+                style: KkType.monoLg.copyWith(color: KkColors.teal),
+              ),
+              const SizedBox(width: KkSpacing.xs),
+              Text(
+                '· $totalDays 天活跃 · 本月 $last30',
+                style: KkType.bodySm.copyWith(color: KkColors.t3),
+              ),
+            ],
+          ),
+          const SizedBox(height: KkSpacing.md),
+        ],
+        // 热力图主体:横向滚动(小屏可能溢出)
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _grid(sorted, weeks),
+              if (showLegend) ...[
+                const SizedBox(height: KkSpacing.sm),
+                _legend(),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+
+    // 任务③:bare 模式直接返回内容,不带外层容器(嵌入调用方卡片)
+    if (bare) return content;
+
     return Container(
       padding: const EdgeInsets.all(KkSpacing.lg),
       decoration: BoxDecoration(
@@ -59,45 +108,7 @@ class ContributionHeatmap extends StatelessWidget {
         borderRadius: BorderRadius.circular(KkRadius.lg),
         border: Border.all(color: KkColors.bd),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showStats) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text('贡献', style: KkType.bodySm.copyWith(color: KkColors.t3)),
-                const SizedBox(width: KkSpacing.sm),
-                Text(
-                  '$totalContributions',
-                  style: KkType.monoLg.copyWith(color: KkColors.teal),
-                ),
-                const SizedBox(width: KkSpacing.xs),
-                Text(
-                  '· $totalDays 天活跃 · 本月 $last30',
-                  style: KkType.bodySm.copyWith(color: KkColors.t3),
-                ),
-              ],
-            ),
-            const SizedBox(height: KkSpacing.md),
-          ],
-          // 热力图主体:横向滚动(小屏可能溢出)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _grid(sorted, weeks),
-                if (showLegend) ...[
-                  const SizedBox(height: KkSpacing.sm),
-                  _legend(),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+      child: content,
     );
   }
 
