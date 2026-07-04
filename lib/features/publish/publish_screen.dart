@@ -46,19 +46,31 @@ class PublishScreen extends ConsumerWidget {
                   padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
                   children: [
                     // 标题
+                    _sectionTitle('标题'),
                     _titleField(ref),
+                    _sectionDivider(),
                     // 一句话价值
+                    _sectionTitle('一句话价值'),
                     _summaryField(ref),
+                    _sectionDivider(),
                     // 成果区:传图/视频
+                    _sectionTitle('成果', hint: '图 / 视频,视频自动排前'),
                     _mediaSection(context, ref, draft.media),
+                    _sectionDivider(),
                     // 素材/actions(已加的列表 + "+" 按钮)
+                    _sectionTitle('可拿走的东西', hint: '提示词 / 文件 / 链接'),
                     _actionsSection(context, ref, draft.actions),
+                    _sectionDivider(),
                     // 作者的话
+                    _sectionTitle('作者的话'),
                     _authorNoteField(ref),
+                    _sectionDivider(),
                     // 标签
+                    _sectionTitle('话题'),
                     _tagsSection(ref, draft.tags),
-                    const SizedBox(height: KkSpacing.lg),
+                    const SizedBox(height: KkSpacing.xl),
                     // 实时预览(复用 detail 渲染器)
+                    _sectionTitle('预览'),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: KkSpacing.lg),
                       child: PublishPreview(),
@@ -79,6 +91,9 @@ class PublishScreen extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(
         horizontal: KkSpacing.sm,
         vertical: KkSpacing.sm,
+      ),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: KkColors.divider)),
       ),
       child: Row(
         children: [
@@ -121,6 +136,50 @@ class PublishScreen extends ConsumerWidget {
     );
   }
 
+  // 任务⑪B:段标题(克制 — t3 小字 + 可选 hint,零旁白)
+  Widget _sectionTitle(String label, {String? hint}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        KkSpacing.lg, KkSpacing.lg, KkSpacing.lg, KkSpacing.xs),
+      child: Row(
+        children: [
+          // 品牌点(teal 小圆点,克制点缀)
+          Container(
+            width: 4,
+            height: 4,
+            margin: const EdgeInsets.only(right: KkSpacing.sm),
+            decoration: const BoxDecoration(
+              color: KkColors.teal,
+              shape: BoxShape.circle,
+            ),
+          ),
+          Text(
+            label,
+            style: KkType.bodySm.copyWith(
+              color: KkColors.t2,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (hint != null) ...[
+            const SizedBox(width: KkSpacing.sm),
+            Text(
+              hint,
+              style: KkType.bodySm.copyWith(color: KkColors.t3, fontSize: 11),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // 段间分隔(极浅,呼吸感)
+  Widget _sectionDivider() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: KkSpacing.sm),
+      child: Divider(height: 1, thickness: 0.5, color: KkColors.divider),
+    );
+  }
+
   // ── 标题 ──
   Widget _titleField(WidgetRef ref) {
     return Padding(
@@ -128,9 +187,12 @@ class PublishScreen extends ConsumerWidget {
       child: TextField(
         onChanged: ref.read(publishDraftProvider.notifier).setTitle,
         style: KkType.h2,
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           hintText: '标题',
+          hintStyle: KkType.h2.copyWith(color: KkColors.t3),
           border: InputBorder.none,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: KkSpacing.xs),
         ),
       ),
     );
@@ -143,9 +205,12 @@ class PublishScreen extends ConsumerWidget {
       child: TextField(
         onChanged: ref.read(publishDraftProvider.notifier).setSummary,
         style: KkType.body.copyWith(color: KkColors.t2),
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           hintText: '一句话说价值',
+          hintStyle: KkType.body.copyWith(color: KkColors.t3),
           border: InputBorder.none,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: KkSpacing.xs),
         ),
       ),
     );
@@ -237,16 +302,19 @@ class PublishScreen extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: KkSpacing.lg,
-        vertical: KkSpacing.md,
+        vertical: KkSpacing.xs,
       ),
       child: TextField(
         onChanged: ref.read(publishDraftProvider.notifier).setAuthorNote,
         maxLines: 3,
         minLines: 1,
         style: KkType.body,
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           hintText: '作者的话',
+          hintStyle: KkType.body.copyWith(color: KkColors.t3),
           border: InputBorder.none,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: KkSpacing.xs),
         ),
       ),
     );
@@ -279,10 +347,13 @@ class PublishScreen extends ConsumerWidget {
           // 输入框(回车加 tag)
           TextField(
             controller: ctrl,
-            decoration: const InputDecoration(
+            style: KkType.body,
+            decoration: InputDecoration(
               hintText: '# 话题(回车加)',
+              hintStyle: KkType.body.copyWith(color: KkColors.t3),
               border: InputBorder.none,
               isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: KkSpacing.xs),
             ),
             onSubmitted: (v) {
               final t = v.trim().replaceAll('#', '');

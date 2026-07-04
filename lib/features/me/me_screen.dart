@@ -14,7 +14,8 @@ import '../../domain/repositories/project_repository.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
-import '../shared/avatar.dart';
+import '../shared/kk_chip.dart';
+import '../shared/profile_header.dart';
 import 'widgets/contribution_heatmap.dart';
 
 /// 我的屏 — 任务③整屏重构为"个人主页"式布局。
@@ -67,20 +68,38 @@ class MeScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: KkSpacing.xxxl),
       children: [
-        // 1+2. 渐变 banner + 大头像 + 名字 + 编辑资料
-        _headerBanner(
-          context: context,
-          me: me,
-          unreadCount: unreadCount,
-        ),
-        const SizedBox(height: KkSpacing.lg),
-        // 3. inline 四联统计(纯文字,无边框无卡片)
-        _inlineStats(
-          context: context,
+        // 1+2+3. 渐变 banner + 大头像 + 名字 + inline 四联统计
+        // 任务⑩A:复用共享 ProfileHeader(me 传 fourthStat=收藏,profile 传 actionSlot=关注/编辑)
+        ProfileHeader(
+          user: me,
+          userId: 'me',
           followingCount: followingCount,
           followerCount: followerCount,
           totalLikes: totalLikes,
-          savedCount: savedCount,
+          onTapFollowing: () => context.push(KkRoutes.follows('me')),
+          onTapFollowers: () => context.push(KkRoutes.follows('me')),
+          fourthStatLabel: '收藏',
+          fourthStatValue: savedCount,
+          onTapFourthStat: () => context.go(KkRoutes.library),
+          bannerActions: [
+            BannerIconButton(
+              icon: Icons.notifications_outlined,
+              onTap: () => context.push(KkRoutes.notifications),
+              hasDot: unreadCount > 0,
+            ),
+            BannerIconButton(
+              icon: Icons.settings_outlined,
+              onTap: () => context.push(KkRoutes.settings),
+            ),
+          ],
+          nameTrailing: Tappable(
+            onTap: () => context.push(KkRoutes.profileEdit),
+            borderRadius: BorderRadius.circular(KkRadius.sm),
+            child: Text(
+              '编辑资料',
+              style: KkType.bodySm.copyWith(color: KkColors.teal),
+            ),
+          ),
         ),
         const SizedBox(height: KkSpacing.xl),
         // 5. 我的贡献卡(整卡 → activity)
@@ -95,215 +114,6 @@ class MeScreen extends ConsumerWidget {
         // 8. 最近看过 + 清空
         _recentlyViewedSection(context, ref, recentProjects),
       ],
-    );
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // 1+2. 渐变 banner + 大头像 + 名字
-  // ──────────────────────────────────────────────────────────────────
-  Widget _headerBanner({
-    required BuildContext context,
-    required KkUser? me,
-    required int unreadCount,
-  }) {
-    const bannerHeight = 160.0;
-    const avatarSize = 72.0;
-    return SizedBox(
-      // banner + 半个头像(头像压在 banner 底沿,一半上一半下)
-      height: bannerHeight + avatarSize / 2,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // 渐变 banner(暖色柔和,浅珊瑚 → 暖纸底,不艳)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: bannerHeight,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFFF3E1CE), // 浅珊瑚/浅橙
-                    KkColors.bg, // 暖纸底 #FBF9F4
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // 右上:通知铃(未读红点)+ 设置齿轮
-          Positioned(
-            top: KkSpacing.sm,
-            right: KkSpacing.xs,
-            child: Row(
-              children: [
-                _bannerIconBtn(
-                  icon: Icons.notifications_outlined,
-                  onTap: () => context.push(KkRoutes.notifications),
-                  hasDot: unreadCount > 0,
-                ),
-                _bannerIconBtn(
-                  icon: Icons.settings_outlined,
-                  onTap: () => context.push(KkRoutes.settings),
-                ),
-              ],
-            ),
-          ),
-          // 大头像(压在 banner 底沿)+ 名字 + 编辑资料
-          Positioned(
-            top: bannerHeight - avatarSize / 2, // 头像中心落在 banner 底沿
-            left: KkSpacing.lg,
-            right: KkSpacing.lg,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                // 头像外圈白边(在渐变上更清晰)
-                Container(
-                  decoration: const BoxDecoration(
-                    color: KkColors.bg,
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(3),
-                  child: KkAvatar(userId: 'me', user: me, size: avatarSize),
-                ),
-                const SizedBox(width: KkSpacing.md),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          me?.name ?? '我',
-                          style: KkType.h2,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Tappable(
-                          onTap: () => context.push(KkRoutes.profileEdit),
-                          borderRadius: BorderRadius.circular(KkRadius.sm),
-                          child: Text(
-                            '编辑资料',
-                            style: KkType.bodySm
-                                .copyWith(color: KkColors.teal),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// banner 右上小图标按钮(半透明白底圆 + 图标,通知带未读红点)。
-  Widget _bannerIconBtn({
-    required IconData icon,
-    required VoidCallback onTap,
-    bool hasDot = false,
-  }) {
-    return Tappable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(KkRadius.pill),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              color: Color(0x14FFFFFF), // 8% 白
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 20, color: KkColors.t1),
-          ),
-          if (hasDot)
-            Positioned(
-              top: 6,
-              right: 6,
-              child: Container(
-                width: 7,
-                height: 7,
-                decoration: const BoxDecoration(
-                  // SPEC:coral 只给 take;未读红点用 like 红(情感色,非 take)
-                  color: KkColors.like,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // 3. inline 四联统计(纯文字,无边框无卡片)
-  // ──────────────────────────────────────────────────────────────────
-  Widget _inlineStats({
-    required BuildContext context,
-    required int followingCount,
-    required int followerCount,
-    required int totalLikes,
-    required int savedCount,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
-      child: Row(
-        children: [
-          Expanded(
-            child: _statBlock(
-              '关注',
-              followingCount,
-              onTap: () => context.push(KkRoutes.follows('me')),
-            ),
-          ),
-          Expanded(
-            child: _statBlock(
-              '粉丝',
-              followerCount,
-              onTap: () => context.push(KkRoutes.follows('me')),
-            ),
-          ),
-          Expanded(
-            child: _statBlock('获赞', totalLikes),
-          ),
-          Expanded(
-            child: _statBlock(
-              '收藏',
-              savedCount,
-              onTap: () => context.go(KkRoutes.library),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _statBlock(String label, int value, {VoidCallback? onTap}) {
-    final content = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(formatCount(value), style: KkType.monoLg),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: KkType.bodySm.copyWith(color: KkColors.t3, fontSize: 11),
-        ),
-      ],
-    );
-    if (onTap == null) return content;
-    return Tappable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(KkRadius.md),
-      child: content,
     );
   }
 
@@ -363,13 +173,19 @@ class MeScreen extends ConsumerWidget {
         children: [
           Text('我关注的领域', style: KkType.h3),
           const SizedBox(height: KkSpacing.md),
+          // 任务⑩B:领域 chip 统一用 KkChip.solid(mint+teal);
+          // "+调整"做成末尾幽灵 chip(KkChip.ghost + add 图标),
+          // 跟在领域 chip 行末尾自然收尾,不单独占行。
           Wrap(
             spacing: KkSpacing.sm,
             runSpacing: KkSpacing.sm,
+            alignment: WrapAlignment.start,
             children: [
-              for (final d in mockFollowedDomains) _domainChip(_domainLabel(d)),
-              _addChip(
+              for (final d in mockFollowedDomains)
+                KkChip.solid(label: _domainLabel(d)),
+              KkChip.ghost(
                 label: '调整',
+                icon: Icons.add,
                 onTap: () => context.push(KkRoutes.profileEdit),
               ),
             ],
@@ -410,12 +226,17 @@ class MeScreen extends ConsumerWidget {
               style: KkType.bodySm.copyWith(color: KkColors.t3),
             )
           else
+            // 任务⑩B:话题 chip 与领域 chip 同款(KkChip.solid,可点跳话题页)。
             Wrap(
               spacing: KkSpacing.sm,
               runSpacing: KkSpacing.sm,
+              alignment: WrapAlignment.start,
               children: [
                 for (final t in mockFollowedTopics)
-                  _topicChip(context, t),
+                  KkChip.solid(
+                    label: '#$t',
+                    onTap: () => context.push(KkRoutes.topic(t)),
+                  ),
               ],
             ),
         ],
@@ -532,80 +353,8 @@ class MeScreen extends ConsumerWidget {
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────
-  // chip helpers(沿用任务②克制风:bgSubtle 底 + bd 边 + t1 文字)
-  // ──────────────────────────────────────────────────────────────────
-  Widget _domainChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: KkSpacing.md,
-        vertical: KkSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: KkColors.bgSubtle,
-        borderRadius: BorderRadius.circular(KkRadius.pill),
-        border: Border.all(color: KkColors.bd),
-      ),
-      child: Text(
-        label,
-        style: KkType.bodySm.copyWith(
-          color: KkColors.t1,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _topicChip(BuildContext context, String tag) {
-    return Tappable(
-      onTap: () => context.push(KkRoutes.topic(tag)),
-      borderRadius: BorderRadius.circular(KkRadius.pill),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: KkSpacing.md,
-          vertical: KkSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: KkColors.bgSubtle,
-          borderRadius: BorderRadius.circular(KkRadius.pill),
-          border: Border.all(color: KkColors.bd),
-        ),
-        child: Text(
-          '#$tag',
-          style: KkType.bodySm.copyWith(color: KkColors.t1),
-        ),
-      ),
-    );
-  }
-
-  Widget _addChip({required String label, required VoidCallback onTap}) {
-    return Tappable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(KkRadius.pill),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: KkSpacing.md,
-          vertical: KkSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(KkRadius.pill),
-          border: Border.all(color: KkColors.bd),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.add, size: 14, color: KkColors.t2),
-            const SizedBox(width: KkSpacing.xs),
-            Text(
-              label,
-              style: KkType.bodySm.copyWith(color: KkColors.t2),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // 任务⑩B:chip helpers 已抽到共享 KkChip(solid/ghost/plain),
+  // 领域/话题用 KkChip.solid,"+调整"用 KkChip.ghost。
 }
 
 /// 最近看过小卡的封面(真图优先,断网/坏链回退 CoverArt)。
