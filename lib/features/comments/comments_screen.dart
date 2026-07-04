@@ -8,7 +8,6 @@ import '../../core/widgets/kk_back_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
-import '../shared/comment_actions_sheet.dart';
 import '../shared/comment_thread.dart';
 import '../shared/empty_state.dart';
 
@@ -119,14 +118,8 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
                   initialComments: sorted,
                   showInput: true,
                   showHeader: false,
-                  onCommentLongPress: (c) => showCommentActionsSheet(
-                    context,
-                    comment: c,
-                    hostType: widget.hostType,
-                    hostId: widget.hostId,
-                    isOwn: c.authorId == 'me',
-                    onCopy: () {},
-                  ),
+                  // 任务⑨:长按 → 动作 sheet 收进 CommentThread 内部(_showActions),
+                  // 接通复制/编辑(own)/删除(own)/打开链接。不再外部传 onCommentLongPress。
                 ),
               ),
             ),

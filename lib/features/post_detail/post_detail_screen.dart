@@ -14,7 +14,6 @@ import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
 import '../shared/avatar.dart';
-import '../shared/comment_actions_sheet.dart';
 import '../shared/comment_thread.dart';
 import '../shared/empty_state.dart';
 import '../shared/share_sheet.dart';
@@ -274,14 +273,8 @@ class PostDetailScreen extends ConsumerWidget {
           initialComments: comments,
           showInput: true,
           showHeader: true,
-          onCommentLongPress: (c) => showCommentActionsSheet(
-            context,
-            comment: c,
-            hostType: 'post',
-            hostId: post.id,
-            isOwn: c.authorId == 'me',
-            onCopy: () {},
-          ),
+          // 任务⑨:长按 → 动作 sheet 收进 CommentThread 内部(_showActions),
+          // 接通复制/编辑(own)/删除(own)/打开链接。不再外部传 onCommentLongPress。
         ),
         // 底部留白(给输入框 SafeArea 腾位)
         const SizedBox(height: KkSpacing.xxl),

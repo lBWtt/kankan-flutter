@@ -5,7 +5,6 @@ import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
-import 'comment_actions_sheet.dart';
 import 'comment_thread.dart';
 
 /// HANDOFF §6.1 评论弹层 — 从底部滑出的全屏评论 sheet。
@@ -69,14 +68,8 @@ class CommentBottomSheet extends ConsumerWidget {
               initialComments: initialComments,
               showInput: true,
               showHeader: true,
-              onCommentLongPress: (c) => showCommentActionsSheet(
-                context,
-                comment: c,
-                hostType: hostType,
-                hostId: hostId,
-                isOwn: c.authorId == 'me',
-                onCopy: () {},
-              ),
+              // 任务⑨:长按 → 动作 sheet 收进 CommentThread 内部(_showActions),
+              // 接通复制/编辑(own)/删除(own)/打开链接。不再外部传 onCommentLongPress。
             ),
           ),
         ],

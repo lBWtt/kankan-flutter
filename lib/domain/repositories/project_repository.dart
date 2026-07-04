@@ -87,6 +87,21 @@ class ProjectRepository {
   void addComment(String hostType, String hostId, Comment comment) {
     _comments.add(comment);
   }
+
+  /// 任务⑨:删除评论(对称 addComment)。CommentThread 长按删除二次确认后调用,
+  /// 同步 mockComments,杜绝 detail 底栏「心得 N」从 commentsFor 重读时计数分裂。
+  /// 楼中楼回复是 Comment 内嵌 replies,不单独入 mockComments,删除顶级评论时
+  /// 其 replies 随之消失(本地 state 已 removeWhere 整条)。
+  void removeComment(String commentId) {
+    _comments.removeWhere((c) => c.id == commentId);
+  }
+
+  /// 任务⑨:更新评论(编辑)。CommentThread _editingId 提交时调用,
+  /// 同步 mockComments 中对应记录,content 替换,其余字段不变。
+  void updateComment(Comment updated) {
+    final i = _comments.indexWhere((c) => c.id == updated.id);
+    if (i >= 0) _comments[i] = updated;
+  }
 }
 
 /// Repository provider(单例,全局共享)。
