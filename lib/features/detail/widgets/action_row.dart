@@ -314,16 +314,203 @@ class _HowButtonState extends State<_HowButton> {
                             style: KkType.bodySm
                                 .copyWith(color: KkColors.t3),
                           )
-                        : CodeDiffBlock(
-                            title: workflow.title,
-                            before: workflow.before,
-                            after: workflow.after,
-                            language: workflow.language,
+                        : Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.stretch,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // 任务⑤:旧→新流程 + 省下时间叙事对比
+                              // (原型第二强「想做」钩子)。oldFlow/newFlow
+                              // 任一 null → 整块不渲染(向后兼容)。
+                              if (workflow.oldFlow != null &&
+                                  workflow.newFlow != null)
+                                _FlowCompare(
+                                  oldFlow: workflow.oldFlow!,
+                                  newFlow: workflow.newFlow!,
+                                  saved: workflow.saved,
+                                ),
+                              CodeDiffBlock(
+                                title: workflow.title,
+                                before: workflow.before,
+                                after: workflow.after,
+                                language: workflow.language,
+                              ),
+                            ],
                           ),
                   )
                 : const SizedBox.shrink(),
           ),
         ),
+      ],
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 任务⑤:旧流程 → 新流程 + 省下时间 叙事对比块
+// ──────────────────────────────────────────────────────────────────
+// 在 _HowButton 展开的 CodeDiffBlock 之上渲染(见上)。原型第二强「想做」钩子——
+// 让人直观看到「以前多麻烦、现在多快」。
+//
+// 版式(克制,与详情页呼吸感一致):
+//   - 上下两段:旧流程(t3 弱)/ 新流程(teal 强)
+//   - 每段:小标题 + 步骤列表(每步前一个小圆点)
+//   - 底部醒目「省下 {saved}」chip:mint 底 + teal 字 + bolt 图标
+//
+// 铁律(SPEC §6):
+//   - coral 只给 take——「省下」chip 用 teal/mint,不用 coral。
+//   - 无 emoji(用 Icon)。零旁白。不出现「拿走」二字。
+//   - oldFlow/newFlow null → 整块不渲染(调用方已判断,此 widget 防御)。
+class _FlowCompare extends StatelessWidget {
+  final List<String> oldFlow;
+  final List<String> newFlow;
+  final String? saved;
+
+  const _FlowCompare({
+    required this.oldFlow,
+    required this.newFlow,
+    this.saved,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: KkSpacing.md),
+      padding: const EdgeInsets.all(KkSpacing.md),
+      decoration: BoxDecoration(
+        color: KkColors.bgSubtle,
+        borderRadius: BorderRadius.circular(KkRadius.md),
+        border: Border.all(color: KkColors.bd),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 旧流程(弱)
+          _FlowSection(
+            label: '旧流程',
+            steps: oldFlow,
+            labelColor: KkColors.t3,
+            stepColor: KkColors.t2,
+            dotColor: KkColors.t3,
+          ),
+          const SizedBox(height: KkSpacing.md),
+          // 新流程(强)
+          _FlowSection(
+            label: '新流程',
+            steps: newFlow,
+            labelColor: KkColors.teal,
+            stepColor: KkColors.t1,
+            dotColor: KkColors.teal,
+            stepBold: true,
+          ),
+          // 省下 chip(mint + teal,不用 coral)
+          if (saved != null && saved!.isNotEmpty) ...[
+            const SizedBox(height: KkSpacing.md),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: KkSpacing.md,
+                  vertical: KkSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: KkColors.mint,
+                  borderRadius: BorderRadius.circular(KkRadius.pill),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.bolt,
+                      size: 14,
+                      color: KkColors.teal,
+                    ),
+                    const SizedBox(width: KkSpacing.xs),
+                    Text(
+                      saved!,
+                      style: KkType.bodySm.copyWith(
+                        fontSize: 12,
+                        color: KkColors.teal,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// _FlowCompare 的单段(旧/新流程):小标题 + 步骤列表(每步前小圆点)。
+class _FlowSection extends StatelessWidget {
+  final String label;
+  final List<String> steps;
+  final Color labelColor;
+  final Color stepColor;
+  final Color dotColor;
+  final bool stepBold;
+
+  const _FlowSection({
+    required this.label,
+    required this.steps,
+    required this.labelColor,
+    required this.stepColor,
+    required this.dotColor,
+    this.stepBold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: KkType.bodySm.copyWith(
+            fontSize: 11,
+            color: labelColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: KkSpacing.xs),
+        for (final step in steps) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Container(
+                    width: 4,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: dotColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: KkSpacing.sm),
+                Expanded(
+                  child: Text(
+                    step,
+                    style: KkType.bodySm.copyWith(
+                      fontSize: 13,
+                      color: stepColor,
+                      fontWeight:
+                          stepBold ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

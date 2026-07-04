@@ -1117,15 +1117,32 @@ List<AuthorRankingEntry> _computeAuthorRanking() {
 // 不另存数据,在 ranking_screen 内用 repository.sorted('hot') 取真实排序。
 // rankChange 由 mock 确定性 hash 出,与作者榜同套路。
 
+/// 任务⑥ Part B:新上榜哨兵值。`mockProjectRankChange` / `mockPostRankChange`
+/// 返回此值 → `_RankChangeChip` 显示「新锐」pill(mint 底 + teal 字,不用 coral)。
+const kRankNewEntrySentinel = 999;
+
+/// 任务⑥ Part B:新上榜项目 id 集合(1-2 个,标「新锐」)。
+const mockNewProjectIds = <String>{
+  'p_aivid_2', // 水墨游鱼
+};
+
+/// 任务⑥ Part B:新上榜动态 id 集合(1-2 个,标「新锐」)。
+const mockNewPostIds = <String>{
+  'post_7',
+};
+
 /// 项目榜排名变化(mock 确定性,稳定可重复)。
-/// 返回 -3..+3,0 表示持平。
+/// 返回 -3..+3,0 表示持平;新上榜返回 [kRankNewEntrySentinel](任务⑥ Part B)。
 int mockProjectRankChange(String projectId) {
+  if (mockNewProjectIds.contains(projectId)) return kRankNewEntrySentinel;
   final h = projectId.hashCode.abs() % 7;
   return h - 3;
 }
 
 /// 动态榜排名变化(mock 确定性,稳定可重复)。
+/// 新上榜返回 [kRankNewEntrySentinel](任务⑥ Part B)。
 int mockPostRankChange(String postId) {
+  if (mockNewPostIds.contains(postId)) return kRankNewEntrySentinel;
   final h = postId.hashCode.abs() % 7;
   return h - 3;
 }
@@ -1141,12 +1158,24 @@ class MockWorkflow {
   final String after;
   final String language;
 
+  /// 任务⑤:旧流程步骤(每步一句,如「录音」「听一遍记时间点」)。null → 不显流程对比块。
+  final List<String>? oldFlow;
+
+  /// 任务⑤:新流程步骤。null → 不显流程对比块。
+  final List<String>? newFlow;
+
+  /// 任务⑤:省下多少(如「每期省 ~3 小时」)。null → 不显省下 chip。
+  final String? saved;
+
   const MockWorkflow({
     required this.ref,
     required this.title,
     this.before,
     required this.after,
     required this.language,
+    this.oldFlow,
+    this.newFlow,
+    this.saved,
   });
 }
 
@@ -1183,6 +1212,10 @@ final mockWorkflows = <MockWorkflow>[
     after: '# 多进程并行\nfrom multiprocessing import Pool\n'
         'with Pool(8) as p:\n    p.map(compress, files)',
     language: 'python',
+    // 任务⑤:旧→新流程叙事
+    oldFlow: const ['单线程逐张压', '1000 张约 40 分钟', '中途卡住重来'],
+    newFlow: const ['8 进程并行', '1000 张约 6 分钟', '断点续传'],
+    saved: '每批省 ~30 分钟',
   ),
   MockWorkflow(
     ref: 'workflow_gpt_review',
@@ -1192,6 +1225,10 @@ final mockWorkflows = <MockWorkflow>[
         '1. 可读性\n2. 潜在 bug\n3. 性能\n4. 安全\n'
         '用 Markdown 输出,每项给具体建议而非泛泛而谈。',
     language: 'markdown',
+    // 任务⑤:旧→新流程叙事
+    oldFlow: const ['一句话丢给它', '反复追问补充', '结果泛泛'],
+    newFlow: const ['一条结构化 prompt', '四维度一次到位', '直接可用'],
+    saved: '每次省 ~10 分钟',
   ),
   MockWorkflow(
     ref: 'workflow_rn_perf',
@@ -1215,6 +1252,10 @@ final mockWorkflows = <MockWorkflow>[
     before: 'single prompt → 5s',
     after: 'storyboard (3 keyframes) + per-frame prompt\n→ 15s 连贯叙事',
     language: 'bash',
+    // 任务⑤:旧→新流程叙事(原型第二强「想做」钩子)
+    oldFlow: const ['单条 prompt 出 5s', '手动拼接多段', '对轨调节奏'],
+    newFlow: const ['storyboard 3 关键帧', '逐帧 prompt 出 15s 连贯', '一次成片'],
+    saved: '一条片省 ~2 小时',
   ),
 ];
 

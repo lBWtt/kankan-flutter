@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/parse_count.dart';
+import '../../core/utils/time_ago.dart';
 import '../../core/widgets/skeletons.dart';
 import '../../core/widgets/kk_back_button.dart';
 import '../../core/widgets/tappable.dart';
@@ -51,10 +52,20 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
   // Phase 5-c:300ms 假 loading,骨架屏占位(与 discover/kankan/library/follows/activity 一致)
   bool _loading = true;
 
+  // 任务⑥:榜单「X 分钟前更新」时间戳——模块级捕获首次进屏时间。
+  // 点击顶部 refresh 按钮 → setState 刷成 now → 文案回「刚刚更新」(零旁白不加 toast)。
+  // 说明条随当前 Tab 变「排名依据」副标题(如实描述现有排序口径)。
+  late int _lastUpdateMs;
+
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 3, vsync: this);
+    _lastUpdateMs = DateTime.now().millisecondsSinceEpoch;
+    // Tab 切换 → setState 重建说明条(排名依据副标题随 Tab 变)
+    _tabCtrl.addListener(() {
+      if (!_tabCtrl.indexIsChanging) setState(() {});
+    });
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -80,10 +91,13 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
         // HANDOFF §5 标题用 KkType.h1(NotoSerifSC 衬线)
         title: const Text('榜单', style: KkType.h1),
         actions: [
-          // 刷新按钮(mock,点击无效果,但有触控反馈)
+          // 刷新按钮(任务⑥:接通——点击刷 _lastUpdateMs = now → 文案回「刚刚更新」)
+          // 零旁白不加 toast,只靠说明条时间戳反馈。
           Tappable(
             onTap: () {
-              // mock 刷新;零旁白不加 toast
+              setState(() {
+                _lastUpdateMs = DateTime.now().millisecondsSinceEpoch;
+              });
             },
             child: const Icon(Icons.refresh, size: 22, color: KkColors.t1),
           ),
@@ -97,6 +111,10 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
             ignoring: _loading,
             child: _tabBar(),
           ),
+          // 任务⑥:说明条——左「排名依据」副标题(t3,如实描述现有排序口径)
+          // + 右「X 分钟前更新」(timeAgo(_lastUpdateMs),t3 mono 11)。
+          // 随当前 Tab 变副标题;随 _lastUpdateMs 变时间戳(refresh 后回「刚刚更新」)。
+          if (!_loading) _basisAndFreshnessBar(),
           Expanded(
             child: _loading
                 ? _skeletonContent()
@@ -243,6 +261,53 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
           Tab(text: '项目'),
           Tab(text: '动态'),
           Tab(text: '作者'),
+        ],
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // 任务⑥:说明条——左「排名依据」副标题 + 右「X 分钟前更新」时间戳
+  // ──────────────────────────────────────────────────────────────────
+  // 在 TabBar 下、列表上。横向 KkSpacing.lg 内边距,与 TabBar / 列表对齐。
+  // 副标题如实描述现有排序口径(项目/动态按 likes 降序、作者按累计获赞),
+  // 不写代码没做的口径(如「按收藏」)。
+  // 时间戳用 timeAgo(_lastUpdateMs):refresh 后回「刚刚更新」,随后「3 分钟前」等。
+  // 铁律:coral 只给 rankChange 下降箭头——副标题/时间戳用 t3,不用 coral。零旁白。
+  Widget _basisAndFreshnessBar() {
+    // 三 Tab 排名依据(如实,与代码排序口径一致)
+    const basis = [
+      '大家最认可的 · 按点赞热度', // 0 项目:projectRepository.sorted('hot') 按 likes 降序
+      '聊得最热的 · 按点赞热度', // 1 动态:postRepository.all()..sort likes 降序
+      '最受认可的创作者 · 按累计获赞', // 2 作者:mockAuthorRanking 按总获赞聚合
+    ];
+    final idx = _tabCtrl.index.clamp(0, 2);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: KkSpacing.lg,
+        vertical: KkSpacing.sm,
+      ),
+      child: Row(
+        children: [
+          Flexible(
+            child: Text(
+              basis[idx],
+              style: KkType.bodySm.copyWith(
+                fontSize: 12,
+                color: KkColors.t3,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: KkSpacing.sm),
+          Text(
+            '${timeAgo(_lastUpdateMs)}更新',
+            style: KkType.mono.copyWith(
+              fontSize: 11,
+              color: KkColors.t3,
+            ),
+          ),
         ],
       ),
     );
@@ -473,6 +538,8 @@ class _AuthorRankRow extends ConsumerWidget {
 //   +N  teal + arrow_upward
 //   -N  coral(警示用法,本屏唯一 coral 出口)+ arrow_downward
 //   0   t3 + remove
+//   999 新锐(任务⑥ Part B 哨兵 [kRankNewEntrySentinel])→ mint + teal + auto_awesome,
+//        不用 coral(铁律:coral 只给 rankChange 下降箭头)
 // 数字用 KkType.mono size 11
 // ──────────────────────────────────────────────────────────────────
 class _RankChangeChip extends StatelessWidget {
@@ -482,9 +549,35 @@ class _RankChangeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 任务⑥ Part B:新上榜哨兵 → 「新锐」pill(mint + teal,不用 coral)。
+    // 早 return,避免 999 被下方 isUp(change>0) 误判成 "+999"。
+    if (change == kRankNewEntrySentinel) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: KkColors.mint,
+          borderRadius: BorderRadius.circular(KkRadius.pill),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.auto_awesome, size: 12, color: KkColors.teal),
+            const SizedBox(width: 2),
+            Text(
+              '新锐',
+              style: KkType.mono.copyWith(
+                fontSize: 11,
+                color: KkColors.teal,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final isUp = change > 0;
     final isDown = change < 0;
-    final isFlat = change == 0;
 
     final Color fg;
     final Color bg;
