@@ -337,7 +337,9 @@ class _ProjectRankingList extends ConsumerWidget {
         return _RankRow(
           rank: i + 1,
           rankChange: mockProjectRankChange(project.id),
-          child: ProjectCard(project: project),
+          // 信息密度:榜单用 compact 细行(56 缩略图 + 标题 + 计数),不用 180 大封面全卡,
+          // 一屏能看更多名次。
+          child: ProjectCard(project: project, compact: true),
         );
       },
     );
