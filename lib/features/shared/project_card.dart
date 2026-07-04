@@ -477,9 +477,10 @@ class _TakeawayChip extends StatelessWidget {
           if (hasHint) ...[
             Text(
               ' · ',
+              // 微调:分隔点用中性 t3,和 hint 一致(label 才是品牌色焦点)
               style: KkType.bodySm.copyWith(
                 fontSize: 12,
-                color: KkColors.coral.withAlpha(140),
+                color: KkColors.t3,
               ),
             ),
             Flexible(
@@ -487,9 +488,11 @@ class _TakeawayChip extends StatelessWidget {
                 take.hint!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                // 微调:hint「怎么用」用中性 t2,让"拿到什么"(label coral)与
+                // "怎么用"(灰)层次分明,不至于整条都珊瑚橙"发满"。
                 style: KkType.bodySm.copyWith(
                   fontSize: 12,
-                  color: KkColors.coral.withAlpha(180),
+                  color: KkColors.t2,
                   fontWeight: FontWeight.w500,
                 ),
               ),

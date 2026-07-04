@@ -93,7 +93,7 @@ class MeScreen extends ConsumerWidget {
         _followedTopicsSection(context),
         const SizedBox(height: KkSpacing.xl),
         // 8. 最近看过 + 清空
-        _recentlyViewedSection(context, recentProjects),
+        _recentlyViewedSection(context, ref, recentProjects),
       ],
     );
   }
@@ -426,7 +426,8 @@ class MeScreen extends ConsumerWidget {
   // ──────────────────────────────────────────────────────────────────
   // 8. 最近看过 + 清空(横向小卡)
   // ──────────────────────────────────────────────────────────────────
-  Widget _recentlyViewedSection(BuildContext context, List<Project> recent) {
+  Widget _recentlyViewedSection(
+      BuildContext context, WidgetRef ref, List<Project> recent) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       child: Column(
@@ -438,9 +439,9 @@ class MeScreen extends ConsumerWidget {
               const Spacer(),
               if (recent.isNotEmpty)
                 Tappable(
-                  // 任务③:app_state 暂无 clearBrowseHistory 方法,
-                  // 按任务文件"先留视觉"指令暂不接线(Phase 5 接后端时接通)。
-                  onTap: () {},
+                  // 清空浏览历史(已接通 app_state.clearBrowseHistory)。
+                  onTap: () =>
+                      ref.read(appStateProvider.notifier).clearBrowseHistory(),
                   borderRadius: BorderRadius.circular(KkRadius.sm),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(

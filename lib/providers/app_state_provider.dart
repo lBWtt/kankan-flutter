@@ -217,6 +217,11 @@ class AppStateNotifier extends Notifier<AppStateData> {
     state = state.copyWith(browseHistory: next);
   }
 
+  /// 清空浏览历史(「我的」页最近看过的「清空」按钮)。
+  void clearBrowseHistory() {
+    state = state.copyWith(browseHistory: const []);
+  }
+
   // ── 通知未读(HANDOFF §6.8)──
   void markNotifRead(String id) {
     final next = Set<String>.from(state.unreadNotifIds)..remove(id);
