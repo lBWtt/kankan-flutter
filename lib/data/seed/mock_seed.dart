@@ -1221,3 +1221,21 @@ final mockWorkflows = <MockWorkflow>[
 /// 按 ref 查工作流(给 detail 屏 how 动作展开用)。
 MockWorkflow? findWorkflow(String ref) =>
     mockWorkflows.where((w) => w.ref == ref).firstOrNull;
+
+// ── 任务③:我关注的领域 / 话题(me_screen 用)──
+// KkUser 无 interests 字段(F-3 注释:Phase 5 加字段后接),me 屏先用 mock 演示。
+// 领域值对齐 profile_edit._domainOptions 的 7 个标准值,kankan 屏也用同一套。
+// 真实场景:Drift 表存 user.followed_domains;这里 mock 3 个(子集)。
+final mockFollowedDomains = <String>[
+  'ai_image',
+  'tool',
+  'prompt',
+];
+
+// 话题取自 mock 项目 / 动态里真实出现过的 tag(me 屏"我关注的话题"用)。
+// 真实场景:Drift 表存 user.followed_tags;这里 mock 3 个真实 tag。
+final mockFollowedTopics = <String>[
+  'midjourney',
+  'flutter',
+  '记账',
+];
