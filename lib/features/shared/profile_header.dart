@@ -165,7 +165,7 @@ class ProfileHeader extends StatelessWidget {
                                 user!.bio!.isNotEmpty) ...[
                               const SizedBox(height: 2),
                               Text(
-                                user.bio!,
+                                user!.bio!,
                                 style:
                                     KkType.bodySm.copyWith(color: KkColors.t3),
                                 maxLines: 1,
