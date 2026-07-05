@@ -244,7 +244,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 label: '退出登录',
                 color: KkColors.t1,
                 weight: FontWeight.w600,
-                onTap: () => Navigator.pop(context),
+                // 修死按钮:原来只 pop(点了没反应)。无真 session,MVP 给二次确认 + 反馈。
+                onTap: () async {
+                  Navigator.pop(context); // 关 sheet
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (dctx) => AlertDialog(
+                      title: const Text('退出登录'),
+                      content: const Text('确定要退出登录吗？'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dctx, false),
+                          child: const Text('取消',
+                              style: TextStyle(color: KkColors.t3)),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(dctx, true),
+                          child: const Text('确定',
+                              style: TextStyle(color: KkColors.teal)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok == true && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('已退出登录'),
+                        duration: Duration(seconds: 1),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: KkColors.t1,
+                      ),
+                    );
+                  }
+                },
               ),
             ] else ...[
               _sheetItem(
