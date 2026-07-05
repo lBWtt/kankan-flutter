@@ -1,17 +1,31 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/config/app_config.dart';
+import '../data/api/projects_api.dart';
 import '../domain/repositories/project_repository.dart';
 import '../domain/models/models.dart';
 
 /// 按 ID 取单个 Project(family provider)。
 ///
 /// detail 页用法:final project = ref.watch(projectByIdProvider(projectId));
+///
+/// 数据源策略(后端接入):
+///   1. 先查内存 mock(命中 = 推荐条/浏览史/mock feed 的项目,含 remote 模式下的 mock id)。
+///   2. mock miss 且 useRemote → fetch GET /projects/{id}(真数据 feed 的 uuid 项目)。
+///   detail_screen 已按 AsyncValue 处理 loading/error/data,无需改动。
 final projectByIdProvider =
     FutureProvider.family<Project?, String>((ref, id) async {
   final repo = ref.watch(projectRepositoryProvider);
-  // 模拟异步(Phase 5 接 Drift 时是真异步)
-  await Future<void>.delayed(const Duration(milliseconds: 50));
-  return repo.byId(id);
+  final local = repo.byId(id);
+  if (local != null) {
+    // 模拟异步(Phase 5 接 Drift 时是真异步)
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    return local;
+  }
+  if (AppConfig.useRemote) {
+    return ref.watch(projectsApiProvider).detail(id);
+  }
+  return null;
 });
 
 /// 作者 by ID(同步,从 repo 读)

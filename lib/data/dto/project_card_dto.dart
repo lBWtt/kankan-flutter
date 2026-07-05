@@ -44,6 +44,55 @@ int _parseMs(dynamic isoOrNull) {
   return DateTime.now().millisecondsSinceEpoch;
 }
 
+/// 从后端**详情** JSON 造 Project（GET /projects/{id}，比卡片多 intro/author/media/counts）。
+/// 详情页 `projectByIdProvider` 在 remote 模式命中时用。作者：后端展开了 author 对象，
+/// 但前端 Project 只存 authorId（作者名靠 userByIdProvider 查 mock）——remote 作者不在 mock，
+/// 故作者行会留空（已知分叉，同 feed 卡片）。
+Project projectFromDetailJson(Map<String, dynamic> j) {
+  // media：后端 media 数组 [{type,url,poster?,...}]；空则用 cover 兜一张。
+  final rawMedia = j['media'];
+  final media = <MediaItem>[];
+  if (rawMedia is List) {
+    for (final m in rawMedia.whereType<Map>()) {
+      final url = m['url']?.toString();
+      if (url != null && url.isNotEmpty) {
+        media.add(MediaItem(
+          type: m['type']?.toString() == 'video' ? 'video' : 'image',
+          url: url,
+          poster: m['poster']?.toString(),
+        ));
+      }
+    }
+  }
+  if (media.isEmpty) {
+    final cover = j['cover_media_url'];
+    if (cover is String && cover.isNotEmpty) {
+      media.add(MediaItem(type: 'image', url: cover));
+    }
+  }
+  final tools = (j['tools'] is List)
+      ? (j['tools'] as List).map((e) => e.toString()).toList()
+      : const <String>[];
+  final author = j['author'];
+  final counts = j['counts'];
+  final takeaway = counts is Map ? counts['takeaways'] : j['takeaway_count'];
+  return Project(
+    id: j['id'].toString(),
+    title: (j['title'] ?? '').toString(),
+    summary: (j['tagline'] ?? j['subtitle'] ?? '').toString(),
+    authorId: author is Map ? (author['id']?.toString() ?? '') : '',
+    resultData: ResultData(media: media),
+    actions: const [], // 后端 actions 结构与前端 sealed ActionItem 不同,暂不映射
+    tags: tools,
+    authorNote: (j['intro'] ?? j['description'])?.toString(),
+    domain: _mapDomain(j['category']?.toString()),
+    likes: 0,
+    commentCount: 0,
+    takeawayCount: takeaway is int ? takeaway : int.tryParse('$takeaway') ?? 0,
+    createdAtMs: _parseMs(j['published_at']),
+  );
+}
+
 /// 从后端卡片 JSON 造一个前端 Project（feed 卡片够用的最小映射）。
 Project projectFromCardJson(Map<String, dynamic> j) {
   final cover = j['cover_media_url'];

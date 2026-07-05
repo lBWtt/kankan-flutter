@@ -34,6 +34,22 @@ class ProjectsApi {
       throw AppException.fromDio(e);
     }
   }
+
+  /// GET /projects/{id} → 单个项目详情（比卡片多 intro/author/media/counts）。
+  Future<Project?> detail(String id) async {
+    try {
+      final resp = await _dio.get<dynamic>('/projects/$id');
+      final data = resp.data;
+      if (data is Map) {
+        return projectFromDetailJson(Map<String, dynamic>.from(data));
+      }
+      return null;
+    } on DioException catch (e) {
+      // 404 → 该 id 后端没有（可能是 mock id 误入）→ 返回 null 让上层兜底,不抛。
+      if (e.response?.statusCode == 404) return null;
+      throw AppException.fromDio(e);
+    }
+  }
 }
 
 final projectsApiProvider = Provider<ProjectsApi>(
