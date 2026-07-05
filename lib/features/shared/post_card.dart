@@ -59,8 +59,9 @@ class PostCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 作者行
+          // 作者行(顶对齐:名字/头像/关注按钮都贴顶,名字不再垂直居中)
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TappableAvatar(
                 userId: post.authorId,
@@ -70,9 +71,12 @@ class PostCard extends ConsumerWidget {
               ),
               const SizedBox(width: KkSpacing.md),
               Expanded(
-                child: Tappable(
+                // 修 bug:原来用 Tappable 包名字块,其内部 Center + minHeight44
+                // 把名字垂直居中在 44px 盒里(用户反馈"名字在中间")。改自适应
+                // GestureDetector,名字块贴顶显示。
+                child: GestureDetector(
                   onTap: () => context.push(KkRoutes.profile(post.authorId)),
-                  borderRadius: BorderRadius.circular(KkRadius.sm),
+                  behavior: HitTestBehavior.opaque,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -83,13 +87,16 @@ class PostCard extends ConsumerWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      // 对齐原型:第二行「@handle · 时间」(handle = 作者 id,同引用卡)。
+                      const SizedBox(height: 1),
+                      // 第二行「简介 · 时间」对齐原型(简介≈作者角色;无简介退回 @id)。
                       Text(
-                        '@${post.authorId} · ${timeAgo(post.createdAtMs)}',
-                        style: KkType.mono.copyWith(
-                          fontSize: 11,
+                        '${(author?.bio != null && author!.bio!.isNotEmpty) ? author.bio : '@${post.authorId}'} · ${timeAgo(post.createdAtMs)}',
+                        style: KkType.bodySm.copyWith(
+                          fontSize: 12,
                           color: KkColors.t3,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
