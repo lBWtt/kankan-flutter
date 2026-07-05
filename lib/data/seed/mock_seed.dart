@@ -925,15 +925,15 @@ final mockNotifications = <NotificationItem>[
 ];
 
 // ── 贡献热力图签到数据(me 屏 + activity 屏用,HANDOFF §6.10 真实数据)──
-// 86 cells(约 12 周 × 7 天)。每个值 = 当天贡献数(0/1/2/3/4 档)。
-// 真实场景:Drift 表查 group by date。这里 mock 86 天的分布。
+// 任务⑯:182 cells(26 周 × 7 天)。每个值 = 当天贡献数(0/1/2/3/4 档)。
+// 真实场景:Drift 表查 group by date。这里 mock 182 天的分布。
 // 编造规则(非 ×N 公式,而是确定性 mock 数据):
 //   - 周末贡献少(0-1)
 //   - 周中贡献多(1-3)
 //   - 个别高产日 4
-// 用 _baseMs 反推 86 天的日期,生成稳定 mock。
+// 用 _baseMs 反推 182 天的日期,生成稳定 mock。
 final mockHeatmapCells = <HeatmapCell>[
-  for (var i = 85; i >= 0; i--)
+  for (var i = 181; i >= 0; i--)
     HeatmapCell(
       // 第 i 天的 0 点(本地时区由 DateTime 处理)
       dateMs: _baseMs - i * 86400000,

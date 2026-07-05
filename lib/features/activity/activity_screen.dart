@@ -141,7 +141,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 const SizedBox(height: 4),
                 const SkeletonLine(width: 60, height: 12),
                 const SizedBox(height: KkSpacing.md),
-                // 7×13 网格骨架(镜像 ContributionHeatmap:7 行 × N 列,mock 86 cells → 13 周)
+                // 7×26 网格骨架(镜像 ContributionHeatmap:7 行 × N 列,mock 182 cells → 26 周)
                 Column(
                   children: List.generate(
                     7,
@@ -149,7 +149,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                       padding: const EdgeInsets.only(bottom: 2),
                       child: Row(
                         children: List.generate(
-                          13,
+                          26,
                           (_) => Expanded(
                             child: Padding(
                               padding:
@@ -330,7 +330,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
                 Text('贡献热力图', style: KkType.h3),
                 const SizedBox(height: 4),
                 Text(
-                  '最近 12 周',
+                  '近 26 周',
                   style: KkType.bodySm.copyWith(color: KkColors.t3),
                 ),
                 const SizedBox(height: KkSpacing.md),

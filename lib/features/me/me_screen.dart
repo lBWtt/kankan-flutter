@@ -122,8 +122,9 @@ class MeScreen extends ConsumerWidget {
   // 5. 我的贡献 卡片(白卡 + bare 热力图嵌入,整卡 → activity)
   // ──────────────────────────────────────────────────────────────────
   Widget _contributionCard(BuildContext context) {
-    // 真实活跃数 = cells 里 level>0 的格子数(非 ×N 编造)
-    final activeDays = mockHeatmapCells.where((c) => c.level > 0).length;
+    // 真实总贡献数 = cells 里所有 level 之和(非 ×N 编造,任务⑯口径)
+    final totalContributions =
+        mockHeatmapCells.fold<int>(0, (s, c) => s + c.level);
     return Tappable(
       onTap: () => context.push(KkRoutes.activity),
       borderRadius: BorderRadius.circular(KkRadius.lg),
@@ -144,16 +145,17 @@ class MeScreen extends ConsumerWidget {
                 Text('我的贡献', style: KkType.h3),
                 const Spacer(),
                 Text(
-                  '最近 13 周 · 共 $activeDays 次活跃',
+                  '近 26 周 · 共 $totalContributions 次贡献',
                   style: KkType.mono.copyWith(color: KkColors.t3, fontSize: 11),
                 ),
               ],
             ),
             const SizedBox(height: KkSpacing.md),
-            // bare 模式:不带自带容器,嵌入本卡(避免双层 bgCard/边框)
+            // 任务⑯:升级后 heatmap(showStats:true 显 3 统计盒),
+            // bare 模式嵌入本卡(避免双层 bgCard/边框)
             ContributionHeatmap(
               cells: mockHeatmapCells,
-              showStats: false,
+              showStats: true,
               showLegend: true,
               bare: true,
             ),
