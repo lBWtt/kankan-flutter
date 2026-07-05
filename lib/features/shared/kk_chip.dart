@@ -135,10 +135,16 @@ class KkChip extends StatelessWidget {
     );
 
     if (onTap == null) return chip;
-    return Tappable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(KkRadius.pill),
-      child: chip,
+    // 修 bug:原来用 Tappable 包裹,其内部 Center 在 Wrap 里会撑满整行宽度,
+    // 导致可点 chip 各占一行、居中显示(阶梯状很丑)。改用自适应 InkWell,
+    // 尺寸贴合 chip,Wrap 里正常左排流式换行。
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(KkRadius.pill),
+        child: chip,
+      ),
     );
   }
 }

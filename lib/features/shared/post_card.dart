@@ -83,9 +83,13 @@ class PostCard extends ConsumerWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      // 对齐原型:第二行「@handle · 时间」(handle = 作者 id,同引用卡)。
                       Text(
-                        timeAgo(post.createdAtMs),
-                        style: KkType.mono.copyWith(fontSize: 11),
+                        '@${post.authorId} · ${timeAgo(post.createdAtMs)}',
+                        style: KkType.mono.copyWith(
+                          fontSize: 11,
+                          color: KkColors.t3,
+                        ),
                       ),
                     ],
                   ),
