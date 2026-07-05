@@ -57,7 +57,8 @@ class MeScreen extends ConsumerWidget {
     final totalLikes = myProjects.fold<int>(0, (s, p) => s + p.likes) +
         myPosts.fold<int>(0, (s, p) => s + p.likes);
     final savedCount = appState.savedProjectIds.length;
-    final unreadCount = appState.unreadNotifIds.length;
+    // 免打扰生效:DND 开 → effectiveUnreadCount 归零 → 通知铃红点消失。
+    final unreadCount = appState.effectiveUnreadCount;
 
     // 最近看过 → 真实 Project 列表(过滤已删/不存在的 ID)
     final recentProjects = appState.browseHistory

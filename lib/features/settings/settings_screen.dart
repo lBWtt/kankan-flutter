@@ -33,10 +33,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  // ── 本地 mock state(无全局影响,只本屏视觉反馈)──
-  bool _dndEnabled = false; // 免打扰时段
-  bool _paperTexture = true; // 暖纸底纹
-  String _fontScale = '标准'; // 字号
+  // 字号/暖纸底纹/免打扰 已迁到 app_state(真生效),不再用本地 mock state。
 
   /// 缓存大小(KB)—— 用 'me' 用户 ID 派生(HANDOFF §6.10:禁写死固定值)。
   /// 范围 1024..5119,稳定确定性。
@@ -313,8 +310,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _switchRow(
           icon: Icons.do_not_disturb_on_outlined,
           label: '免打扰时段',
-          value: _dndEnabled,
-          onChanged: (v) => setState(() => _dndEnabled = v),
+          // 真生效:开 → 通知铃未读红点被抑制(effectiveUnreadCount 归零)。
+          value: ref.watch(appStateProvider).dndEnabled,
+          onChanged: (v) =>
+              ref.read(appStateProvider.notifier).setDndEnabled(v),
         ),
       ],
     );
@@ -346,9 +345,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             (value: '大', label: '大'),
             (value: '特大', label: '特大'),
           ],
-          selected: _fontScale,
+          // 真生效:全局 textScaler 由此偏好驱动(app.dart 应用)。
+          selected: ref.watch(appStateProvider).fontScale,
           onChanged: (s) {
-            setState(() => _fontScale = s);
+            ref.read(appStateProvider.notifier).setFontScale(s);
             _toast('字号已设为：$s');
           },
         ),
@@ -356,8 +356,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _switchRow(
           icon: Icons.texture_outlined,
           label: '暖纸底纹',
-          value: _paperTexture,
-          onChanged: (v) => setState(() => _paperTexture = v),
+          // 真生效:NoiseBackground 读它决定画不画噪点。
+          value: ref.watch(appStateProvider).paperTexture,
+          onChanged: (v) =>
+              ref.read(appStateProvider.notifier).setPaperTexture(v),
         ),
       ],
     );

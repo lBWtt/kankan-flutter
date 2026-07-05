@@ -60,6 +60,16 @@ class AppStateData {
   /// kankan _remoteList(真数据)不过滤(后端另说)。
   final Set<String> notInterestedIds;
 
+  // ── 偏好设置(真生效,settings 屏读写)──
+  /// 字号:'小'/'标准'/'大'/'特大' → app.dart 应用全局 textScaler。
+  final String fontScale;
+
+  /// 暖纸底纹开关 → NoiseBackground 读它决定画不画噪点。
+  final bool paperTexture;
+
+  /// 免打扰:开 → 通知铃未读红点被抑制(effectiveUnreadCount 归零)。
+  final bool dndEnabled;
+
   const AppStateData({
     this.themeMode = ThemeMode.light,
     this.currentTabIndex = 0,
@@ -71,7 +81,21 @@ class AppStateData {
     this.unreadNotifIds = const {},
     this.recentSearchesMap = const {},
     this.notInterestedIds = const {},
+    this.fontScale = '标准',
+    this.paperTexture = true,
+    this.dndEnabled = false,
   });
+
+  /// 免打扰生效后的未读数:DND 开 → 0(红点消失);否则真实未读数。
+  int get effectiveUnreadCount => dndEnabled ? 0 : unreadNotifIds.length;
+
+  /// 字号 → textScaler 倍率。
+  double get textScaleFactor => switch (fontScale) {
+        '小' => 0.9,
+        '大' => 1.15,
+        '特大' => 1.3,
+        _ => 1.0,
+      };
 
   /// 向后兼容:返回 List<String>(按时间戳降序,最新在前)。
   /// 供 settings_screen(searchCount = .length)/ search_results_screen 等使用。
@@ -136,6 +160,9 @@ class AppStateData {
     Set<String>? unreadNotifIds,
     Map<String, int>? recentSearchesMap,
     Set<String>? notInterestedIds,
+    String? fontScale,
+    bool? paperTexture,
+    bool? dndEnabled,
   }) =>
       AppStateData(
         themeMode: themeMode ?? this.themeMode,
@@ -148,6 +175,9 @@ class AppStateData {
         unreadNotifIds: unreadNotifIds ?? this.unreadNotifIds,
         recentSearchesMap: recentSearchesMap ?? this.recentSearchesMap,
         notInterestedIds: notInterestedIds ?? this.notInterestedIds,
+        fontScale: fontScale ?? this.fontScale,
+        paperTexture: paperTexture ?? this.paperTexture,
+        dndEnabled: dndEnabled ?? this.dndEnabled,
       );
 }
 
@@ -157,6 +187,13 @@ class AppStateNotifier extends Notifier<AppStateData> {
   AppStateData build() => AppStateData.initial();
 
   void setThemeMode(ThemeMode mode) => state = state.copyWith(themeMode: mode);
+
+  // ── 偏好设置(真生效)──
+  void setFontScale(String scale) =>
+      state = state.copyWith(fontScale: scale);
+  void setPaperTexture(bool on) =>
+      state = state.copyWith(paperTexture: on);
+  void setDndEnabled(bool on) => state = state.copyWith(dndEnabled: on);
 
   void setTabIndex(int i) => state = state.copyWith(currentTabIndex: i);
 

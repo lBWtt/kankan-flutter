@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
+import 'providers/app_state_provider.dart';
 import 'router/app_router.dart';
 
 /// 根 Widget。
@@ -20,11 +21,20 @@ class KankanApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(goRouterProvider);
+    // 字号真生效:全局 textScaler 由 settings 的字号偏好驱动(app_state)。
+    final scale = ref.watch(
+      appStateProvider.select((s) => s.textScaleFactor),
+    );
     return MaterialApp.router(
       title: '看看',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       routerConfig: router,
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        minScaleFactor: scale,
+        maxScaleFactor: scale,
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

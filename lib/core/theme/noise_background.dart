@@ -1,6 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../providers/app_state_provider.dart';
 
 /// 暖纸噪点底 — HANDOFF §5:暖纸噪点底 #FBF9F4。
 ///
@@ -42,7 +45,7 @@ class NoisePainter extends CustomPainter {
 }
 
 /// 全屏噪点底包装。RepaintBoundary 隔离重绘(滚动时噪点不重画)。
-class NoiseBackground extends StatelessWidget {
+class NoiseBackground extends ConsumerWidget {
   final Widget child;
   final int seed;
 
@@ -53,7 +56,12 @@ class NoiseBackground extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 暖纸底纹真生效:settings 关掉 → 不画噪点(纯 bg 底)。
+    final paper = ref.watch(
+      appStateProvider.select((s) => s.paperTexture),
+    );
+    if (!paper) return child;
     return RepaintBoundary(
       child: CustomPaint(
         painter: NoisePainter(seed: seed),
