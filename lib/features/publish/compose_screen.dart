@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
@@ -9,20 +10,21 @@ import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../router/routes.dart';
-import 'widgets/media_picker.dart';
 
-/// 任务⑪ 发动态 compose 屏 — 对应 Post 模型(轻内容)。
+/// 任务⑭ 发动态 compose 屏 — 朋友圈发布器样式。
 ///
-/// 现状:_showPublishEntrySheet 只注入 onPublishProject,「发动态」死了。
-/// 本屏接通:多行文字 + 可选图(复用 MediaPicker)+ 可选话题 + 可选引用项目。
+/// 版式(从上到下):
+/// 1. 顶栏:左「取消」纯文字(t2)+ 右「发表」绿胶囊(teal,空内容 t4 置灰);中间留白。
+/// 2. 大号多行文字输入(无边框,hint「这一刻的想法…」,0/500 淡计数)。
+/// 3. 九宫格图片区(3 列,近正方形圆角,右上「×」移除,末尾虚线「+」添加格,满 9 隐藏)。
+/// 4. 已选话题 chip 排(可删)。
+/// 5. 引用项目卡(已选态,可删/跳详情)。
+/// 6. 底部操作条(朋友圈式行):话题 / 引用项目(未选时)。零假按钮(不摆位置/提醒谁看/谁可以看)。
 ///
-/// 发送:校验非空 → 造 Post 加进 postRepository.addPost(对称 addComment)
-///   → 关屏 → 新动态出现在发现页推荐流顶部(按 createdAtMs 降序)。
+/// 不动:_send 发送逻辑、_close() 返回逻辑、Post 模型、postRepository、路由、theme、其它屏。
 ///
-/// 参考 publish_screen 的顶栏/输入/媒体结构,不引新依赖,不改 Post 模型。
-///
-/// 铁律:coral 只给 take(本屏不用 coral);无 emoji;零旁白(hint 只写事实);
-/// 触控 ≥44pt;禁 if(artifactType);Post 引用项目按现有 quoteProjectId 字段。
+/// 铁律:coral 只给 take(本屏不用 coral,发表用 teal);无 emoji;零旁白(hint 只写事实);
+/// 触控 ≥44pt;零假按钮;复用 image_picker 选图(不引新依赖,不改 MediaPicker 组件本身)。
 class ComposeScreen extends ConsumerStatefulWidget {
   const ComposeScreen({super.key});
 
@@ -32,7 +34,6 @@ class ComposeScreen extends ConsumerStatefulWidget {
 
 class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   final _contentCtrl = TextEditingController();
-  final _tagCtrl = TextEditingController();
   final List<MediaItem> _media = [];
   final List<String> _tags = [];
   String? _quoteProjectId;
@@ -40,7 +41,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   @override
   void dispose() {
     _contentCtrl.dispose();
-    _tagCtrl.dispose();
     super.dispose();
   }
 
@@ -94,6 +94,88 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       ));
   }
 
+  /// 九宫格选图 — 复用 image_picker.pickMultiImage(同 MediaPicker 图片逻辑),
+  /// 不引新依赖、不改 MediaPicker 组件本身(publish 页仍用 MediaPicker)。
+  /// 满 9 张截断(Post 最多 9 图)。
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    try {
+      final files = await picker.pickMultiImage(imageQuality: 85);
+      if (files.isEmpty) return;
+      setState(() {
+        for (final f in files) {
+          if (_media.length >= 9) break;
+          _media.add(MediaItem(
+            type: 'image',
+            url: f.path, // Phase 2 本地路径;Phase 5 上传后换 URL
+            alt: '本地图片',
+          ));
+        }
+      });
+    } catch (_) {
+      // 用户取消或权限拒绝,静默
+    }
+  }
+
+  /// 话题添加 — 朋友圈式:点底部「话题」行弹 dialog 输入,回车或点「添加」入列。
+  void _addTagDialog() {
+    final ctrl = TextEditingController();
+    void submit() {
+      final t = ctrl.text.trim().replaceAll('#', '');
+      if (t.isNotEmpty && !_tags.contains(t)) {
+        setState(() => _tags.add(t));
+      }
+      Navigator.pop(context);
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KkColors.bgCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(KkRadius.lg),
+        ),
+        title: Text('添加话题', style: KkType.h3),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: KkType.body,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(
+            hintText: '# 话题',
+            hintStyle: KkType.body.copyWith(color: KkColors.t3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(KkRadius.sm),
+              borderSide: const BorderSide(color: KkColors.bd),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(KkRadius.sm),
+              borderSide: const BorderSide(color: KkColors.teal, width: 1.2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: KkSpacing.md,
+              vertical: KkSpacing.md,
+            ),
+          ),
+          onSubmitted: (_) => submit(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('取消',
+                style: KkType.body.copyWith(color: KkColors.t2)),
+          ),
+          TextButton(
+            onPressed: submit,
+            child: Text('添加',
+                style: KkType.body
+                    .copyWith(color: KkColors.teal, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,14 +190,30 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
                 children: [
                   _contentField(),
-                  // 媒体区(始终显,MediaPicker 自带「图片」按钮;compose 只要图,
-                  // onPicked 过滤非 image。视频按钮点选后静默忽略 — Post 不收视频)
                   const SizedBox(height: KkSpacing.sm),
-                  _mediaSection(),
-                  const SizedBox(height: KkSpacing.md),
-                  _tagsSection(),
-                  const SizedBox(height: KkSpacing.md),
-                  _quoteSection(),
+                  _imageGrid(),
+                  if (_tags.isNotEmpty) ...[
+                    const SizedBox(height: KkSpacing.lg),
+                    _tagsChips(),
+                  ],
+                  if (_quoteProjectId != null) ...[
+                    const SizedBox(height: KkSpacing.lg),
+                    _quoteCard(),
+                  ],
+                  const SizedBox(height: KkSpacing.xl),
+                  // 底部操作条(朋友圈式行):只放已实现入口。
+                  _actionRow(
+                    icon: Icons.tag_outlined,
+                    label: '话题',
+                    value: _tags.isEmpty ? null : '已选 ${_tags.length} 个',
+                    onTap: _addTagDialog,
+                  ),
+                  if (_quoteProjectId == null)
+                    _actionRow(
+                      icon: Icons.link,
+                      label: '引用项目',
+                      onTap: _pickProject,
+                    ),
                 ],
               ),
             ),
@@ -125,7 +223,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     );
   }
 
-  // ── 顶栏(取消 / 发动态 / 发送)──
+  // ── 顶栏(取消纯文字 / 发表绿胶囊;中间留白,朋友圈式)──
   Widget _topBar() {
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -139,13 +237,13 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         children: [
           Tappable(
             onTap: _close,
-            child: const Padding(
-              padding: EdgeInsets.all(KkSpacing.md),
-              child: Text('取消', style: KkType.body),
+            child: Padding(
+              padding: const EdgeInsets.all(KkSpacing.md),
+              child: Text('取消', style: KkType.body.copyWith(color: KkColors.t2)),
             ),
           ),
           const Spacer(),
-          Text('发动态', style: KkType.h3),
+          // 朋友圈式:中间留白(极简,不放标题)
           const Spacer(),
           Tappable(
             onTap: _canSend ? _send : null,
@@ -156,14 +254,15 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 vertical: KkSpacing.sm,
               ),
               decoration: BoxDecoration(
-                // 空内容置灰(非 coral;发送不是 take)
+                // 空内容置灰(非 coral;发表不是 take,用 teal)
                 color: _canSend ? KkColors.teal : KkColors.t4,
                 borderRadius: BorderRadius.circular(KkRadius.pill),
               ),
               child: const Text(
-                '发送',
+                '发表',
                 style: TextStyle(
                   color: Colors.white,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   fontFamily: 'NotoSerifSC',
                 ),
@@ -175,136 +274,124 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     );
   }
 
-  // ── 多行文字(主输入区,hint 零旁白)──
+  // ── 多行文字(主输入区,朋友圈式大留白;0/500 淡计数)──
   Widget _contentField() {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: KkSpacing.lg,
-        vertical: KkSpacing.md,
+        vertical: KkSpacing.lg,
       ),
       child: TextField(
         controller: _contentCtrl,
         maxLines: 8,
         minLines: 4,
+        maxLength: 500,
         style: KkType.body,
         decoration: InputDecoration(
-          hintText: '分享你的灵感、发现、或一个问题',
+          hintText: '这一刻的想法…',
           hintStyle: KkType.body.copyWith(color: KkColors.t3),
           border: InputBorder.none,
           isDense: true,
           contentPadding: EdgeInsets.zero,
+          counterStyle: KkType.mono.copyWith(fontSize: 10, color: KkColors.t3),
         ),
         onChanged: (_) => setState(() {}),
       ),
     );
   }
 
-  // ── 媒体(复用 MediaPicker,只选图;视频走 Project)──
-  Widget _mediaSection() {
+  // ── 九宫格图片区(3 列,近正方形圆角,×移除,末尾虚线+添加格)──
+  Widget _imageGrid() {
+    final screenW = MediaQuery.of(context).size.width;
+    // 3 列:屏宽 - 左右 padding(2*lg) - 2 个间隙(2*xs)
+    final cellSize = (screenW - 2 * KkSpacing.lg - 2 * KkSpacing.xs) / 3;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
-      child: MediaPicker(
-        current: _media,
-        onPicked: (m) {
-          if (m.type == 'image') {
-            setState(() => _media.add(m));
-          }
-        },
-        onRemoved: (i) => setState(() => _media.removeAt(i)),
-      ),
-    );
-  }
-
-  // ── 话题(回车加,可删)──
-  Widget _tagsSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Wrap(
+        spacing: KkSpacing.xs,
+        runSpacing: KkSpacing.xs,
         children: [
-          if (_tags.isNotEmpty) ...[
-            Wrap(
-              spacing: KkSpacing.sm,
-              runSpacing: KkSpacing.sm,
-              children: [
-                for (final t in _tags)
-                  _TagChip(
-                    tag: t,
-                    onRemove: () => setState(() => _tags.remove(t)),
-                  ),
-              ],
+          for (int i = 0; i < _media.length; i++)
+            _GridThumb(
+              media: _media[i],
+              size: cellSize,
+              onRemove: () => setState(() => _media.removeAt(i)),
             ),
-            const SizedBox(height: KkSpacing.sm),
-          ],
-          TextField(
-            controller: _tagCtrl,
-            style: KkType.body,
-            decoration: InputDecoration(
-              hintText: '# 话题(回车加)',
-              hintStyle: KkType.body.copyWith(color: KkColors.t3),
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 4),
-              prefixIcon: const Icon(Icons.tag,
-                  size: 16, color: KkColors.teal),
-              prefixIconConstraints: const BoxConstraints(
-                minWidth: 24,
-                minHeight: 24,
-              ),
-            ),
-            onSubmitted: (v) {
-              final t = v.trim().replaceAll('#', '');
-              if (t.isNotEmpty && !_tags.contains(t)) {
-                setState(() => _tags.add(t));
-              }
-              _tagCtrl.clear();
-            },
-          ),
+          if (_media.length < 9)
+            _AddCell(size: cellSize, onTap: _pickImage),
         ],
       ),
     );
   }
 
-  // ── 引用项目(选一个,内嵌小卡;已选可删)──
-  Widget _quoteSection() {
-    if (_quoteProjectId != null) {
-      final repo = ref.read(projectRepositoryProvider);
-      final project = repo.byId(_quoteProjectId!);
-      if (project != null) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
-          child: _QuoteProjectCard(
-            project: project,
-            onRemove: () => setState(() => _quoteProjectId = null),
-          ),
-        );
-      }
-    }
+  // ── 已选话题 chip 排(可删)──
+  Widget _tagsChips() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
+      child: Wrap(
+        spacing: KkSpacing.sm,
+        runSpacing: KkSpacing.sm,
+        children: [
+          for (final t in _tags)
+            _TagChip(
+              tag: t,
+              onRemove: () => setState(() => _tags.remove(t)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── 引用项目卡(已选态,可删/跳详情)──
+  Widget _quoteCard() {
+    final repo = ref.read(projectRepositoryProvider);
+    final project = repo.byId(_quoteProjectId!);
+    if (project == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
+      child: _QuoteProjectCard(
+        project: project,
+        onRemove: () => setState(() => _quoteProjectId = null),
+      ),
+    );
+  }
+
+  // ── 底部操作条行(朋友圈式:icon + 标签 + 值 + 箭头,顶分隔线)──
+  Widget _actionRow({
+    required IconData icon,
+    required String label,
+    String? value,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: KkColors.divider)),
+      ),
       child: Tappable(
-        onTap: _pickProject,
-        borderRadius: BorderRadius.circular(KkRadius.md),
-        child: Container(
-          width: double.infinity,
+        onTap: onTap,
+        child: Padding(
           padding: const EdgeInsets.symmetric(
-            vertical: KkSpacing.md,
             horizontal: KkSpacing.lg,
-          ),
-          decoration: BoxDecoration(
-            color: KkColors.bgSubtle,
-            borderRadius: BorderRadius.circular(KkRadius.md),
-            border: Border.all(color: KkColors.bd, width: 0.8),
+            vertical: KkSpacing.md,
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.link, size: 16, color: KkColors.teal),
-              const SizedBox(width: KkSpacing.xs),
-              Text(
-                '引用项目',
-                style: KkType.bodySm.copyWith(color: KkColors.teal),
-              ),
+              Icon(icon, size: 20, color: KkColors.t2),
+              const SizedBox(width: KkSpacing.md),
+              Text(label, style: KkType.body),
+              const Spacer(),
+              if (value != null) ...[
+                Flexible(
+                  child: Text(
+                    value,
+                    style: KkType.bodySm.copyWith(color: KkColors.t3),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: KkSpacing.xs),
+              ],
+              const Icon(Icons.chevron_right, size: 18, color: KkColors.t3),
             ],
           ),
         ),
@@ -389,6 +476,146 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 }
 
+// ── 九宫格缩略图(圆角 + 右上×移除)──
+class _GridThumb extends StatelessWidget {
+  final MediaItem media;
+  final double size;
+  final VoidCallback onRemove;
+
+  const _GridThumb({
+    required this.media,
+    required this.size,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(KkRadius.sm),
+            child: SizedBox.expand(child: _buildImage()),
+          ),
+          // 右上×移除(热区 44,视觉小圆贴角)
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Tappable(
+              onTap: onRemove,
+              borderRadius: BorderRadius.circular(KkRadius.pill),
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  color: Color(0xCC000000),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close,
+                    color: Colors.white, size: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImage() {
+    // 同 MediaPicker:本地路径用 picsum 占位(URL 始 http 直接 network)。
+    // 跨平台兼容(Image.file 需 dart:io,Web 不行,Phase 2 先占位)。
+    if (media.url.startsWith('http')) {
+      return Image.network(media.url,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholder());
+    }
+    return Image.network(
+      'https://picsum.photos/seed/${media.url.hashCode}/200/200',
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _placeholder(),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: KkColors.bgSubtle,
+      alignment: Alignment.center,
+      child: const Icon(Icons.image_outlined, color: KkColors.t3, size: 24),
+    );
+  }
+}
+
+// ── 九宫格末尾虚线+添加格(满 9 隐藏)──
+class _AddCell extends StatelessWidget {
+  final double size;
+  final VoidCallback onTap;
+
+  const _AddCell({required this.size, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Tappable(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(KkRadius.sm),
+        child: Container(
+          decoration: BoxDecoration(
+            color: KkColors.bgSubtle,
+            borderRadius: BorderRadius.circular(KkRadius.sm),
+          ),
+          child: CustomPaint(
+            painter: _DashedBorderPainter(
+              color: KkColors.bd,
+              radius: KkRadius.sm,
+            ),
+            child: Center(
+              child: Icon(Icons.add, size: 28, color: KkColors.t3),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 虚线圆角边框 painter(九宫格「+」添加格用)。
+/// 用 PathMetric 沿 RRect 路径等距取 dash,得真圆角虚线(非四边直线凑)。
+class _DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+
+  const _DashedBorderPainter({required this.color, this.radius = KkRadius.sm});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
+    final path = Path()..addRRect(rrect);
+    const dashWidth = 4.0;
+    const dashGap = 3.0;
+    for (final metric in path.computeMetrics()) {
+      double distance = 0;
+      while (distance < metric.length) {
+        final end = (distance + dashWidth).clamp(0.0, metric.length);
+        canvas.drawPath(metric.extractPath(distance, end), paint);
+        distance += dashWidth + dashGap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorderPainter old) => old.color != color;
+}
+
 // ── 话题 chip(可删)──
 class _TagChip extends StatelessWidget {
   final String tag;
@@ -425,7 +652,7 @@ class _TagChip extends StatelessWidget {
   }
 }
 
-// ── 引用项目小卡(已选态,可删)──
+// ── 引用项目小卡(已选态,可删/跳详情)──
 class _QuoteProjectCard extends StatelessWidget {
   final Project project;
   final VoidCallback onRemove;
