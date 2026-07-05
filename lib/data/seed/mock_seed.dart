@@ -523,6 +523,11 @@ final mockPosts = <Post>[
     authorId: 'lin',
     tags: const ['midjourney', 'v6'],
     quoteProjectId: 'p_aiimg_1',
+    media: const [
+      MediaItem(type: 'image', url: 'https://picsum.photos/seed/mj_v6_a/800/800'),
+      MediaItem(type: 'image', url: 'https://picsum.photos/seed/mj_v6_b/800/800'),
+      MediaItem(type: 'image', url: 'https://picsum.photos/seed/mj_v6_c/800/800'),
+    ],
     likes: 45,
     commentCount: 3,
     createdAtMs: _ms(0, 1),
@@ -542,6 +547,14 @@ final mockPosts = <Post>[
     authorId: 'wang',
     tags: const ['runway', 'gen3'],
     quoteProjectId: 'p_aivid_1',
+    media: const [
+      MediaItem(
+        type: 'video',
+        url: 'https://picsum.photos/seed/runway_g3_clip/1200/675',
+        poster: 'https://picsum.photos/seed/runway_g3_poster/1200/675',
+        durationSec: 12,
+      ),
+    ],
     likes: 67,
     commentCount: 4,
     createdAtMs: _ms(0, 4),
@@ -562,6 +575,10 @@ final mockPosts = <Post>[
     authorId: 'lin',
     tags: const ['sdxl', 'controlnet', '参数'],
     quoteProjectId: 'p_aiimg_2',
+    media: const [
+      MediaItem(type: 'image', url: 'https://picsum.photos/seed/sdxl_canny_a/800/600'),
+      MediaItem(type: 'image', url: 'https://picsum.photos/seed/sdxl_canny_b/800/600'),
+    ],
     likes: 56,
     commentCount: 5,
     createdAtMs: _ms(3, 1),
@@ -592,6 +609,9 @@ final mockPosts = <Post>[
     authorId: 'chen',
     tags: const ['python', 'webp', '图片优化'],
     quoteProjectId: 'p_tool_1',
+    media: const [
+      MediaItem(type: 'image', url: 'https://picsum.photos/seed/webp_compare/1000/562'),
+    ],
     likes: 41,
     commentCount: 3,
     createdAtMs: _ms(4, 2),

@@ -6,12 +6,12 @@ import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/parse_count.dart';
 import '../../core/utils/time_ago.dart';
+import '../../core/widgets/cover_art.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../data/seed/mock_seed.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
-import '../../domain/repositories/project_repository.dart';
 import '../../router/routes.dart';
 import 'avatar.dart';
 
@@ -20,20 +20,10 @@ import 'avatar.dart';
 /// 动态二分:文字 + 可选图 + 话题 + 引用项目(浮窗)。
 /// 没有 resultData / actions(那是 Project 的)。
 ///
+/// 任务⑮:补配图网格(1/2/3/4-9 布局)+ 引用卡改浅绿底 + 分类徽标。
+///
 /// 零旁白(HANDOFF §3):无"点赞 +1"等引导,只图标 + 真实数字。
 /// 计数铁律(HANDOFF §6.10):likes/commentCount 取真实数组长度。
-///
-/// Phase 4 Hero 共享元素(HANDOFF §5 动效系统):
-///   - PostCard 不参与 Hero。虽然 Post 模型有 `media: List<MediaItem>` 字段,
-///     但本卡当前渲染为「作者行 + 正文 + 标签 + 引用项目浮窗 + 操作行」,
-///     无首图 / cover 展示区(无 _buildMedia / _buildFirstImage 之类方法),
-///     故无 Hero 发送端。动态详情页(post_detail_screen)顶部也不需要 cover
-///     飞入过渡。
-///   - 引用项目浮窗(_QuoteProject)内的 40×40 小封面是引用项目的占位,
-///     不是本动态的 cover,不参与 Hero 共享元素(由被引用项目的 detail_screen
-///     Hero 负责)。
-///   - 若未来 PostCard 接入首图渲染,使用 tag `'post-cover-{post.id}'`
-///     与 post_detail_screen 顶部配对。
 class PostCard extends ConsumerWidget {
   final Post post;
   final VoidCallback? onCommentTap;
@@ -107,6 +97,11 @@ class PostCard extends ConsumerWidget {
           const SizedBox(height: KkSpacing.md),
           // 正文
           Text(post.content, style: KkType.body.copyWith(height: 1.6)),
+          // 配图网格(任务⑮A:1/2/3/4-9 布局,放正文下、标签/引用上)
+          if (post.media.isNotEmpty) ...[
+            const SizedBox(height: KkSpacing.md),
+            _ImageGrid(media: post.media),
+          ],
           // 标签(无 emoji,纯 #tag)
           if (post.tags.isNotEmpty) ...[
             const SizedBox(height: KkSpacing.sm),
@@ -169,7 +164,146 @@ class PostCard extends ConsumerWidget {
   }
 }
 
-// ── 引用项目浮窗 ──
+// ── 任务⑮A:配图网格(按张数布局,小红书/朋友圈式)──
+//
+// 1 张 → 单大图(16:9,圆角 md)
+// 2 张 → 并排(1:1,中间 xs 间距)
+// 3 张 → 一行三(1:1)
+// 4–9 张 → 3 列九宫格(1:1)
+// >9 张 → 只显前 9,第 9 张叠「+N」遮罩
+// 每张:Image.network(loadingBuilder/errorBuilder 回退 CoverArt,同 project_card);
+// video 叠 play 图标。
+class _ImageGrid extends StatelessWidget {
+  final List<MediaItem> media;
+
+  const _ImageGrid({required this.media});
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = media.take(9).toList();
+    final count = shown.length;
+    final overflow = media.length - 9; // >0 表示有溢出
+
+    if (count == 1) {
+      // 单大图 16:9
+      return _GridCell(
+        media: shown[0],
+        aspect: 16 / 9,
+        borderRadius: KkRadius.md,
+        overlayCount: overflow > 0 ? overflow : null,
+      );
+    }
+
+    if (count == 2) {
+      return Row(
+        children: [
+          Expanded(child: _GridCell(media: shown[0], aspect: 1)),
+          const SizedBox(width: KkSpacing.xs),
+          Expanded(child: _GridCell(media: shown[1], aspect: 1)),
+        ],
+      );
+    }
+
+    if (count == 3) {
+      return Row(
+        children: [
+          for (var i = 0; i < 3; i++) ...[
+            Expanded(child: _GridCell(media: shown[i], aspect: 1)),
+            if (i < 2) const SizedBox(width: KkSpacing.xs),
+          ],
+        ],
+      );
+    }
+
+    // 4–9 张:3 列九宫格(AspectRatio 1:1,间距 xs)
+    return GridView.count(
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: KkSpacing.xs,
+      crossAxisSpacing: KkSpacing.xs,
+      childAspectRatio: 1,
+      children: [
+        for (var i = 0; i < count; i++)
+          _GridCell(
+            media: shown[i],
+            aspect: 1,
+            overlayCount: (i == 8 && overflow > 0) ? overflow : null,
+          ),
+      ],
+    );
+  }
+}
+
+// ── 单格(Image.network + CoverArt 回退;video 叠 play;溢出叠+N)──
+class _GridCell extends StatelessWidget {
+  final MediaItem media;
+  final double aspect;
+  final double borderRadius;
+  final int? overlayCount; // >0 时叠「+N」遮罩(仅溢出末格)
+
+  const _GridCell({
+    required this.media,
+    required this.aspect,
+    this.borderRadius = KkRadius.sm,
+    this.overlayCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isVideo = media.type == 'video';
+    final url = isVideo ? (media.poster ?? media.url) : media.url;
+    return AspectRatio(
+      aspectRatio: aspect,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 图/封面:有 URL → Image.network(loading/error 回退 CoverArt);
+            // 无 URL → CoverArt 占位(同 project_card 套路,不引新依赖)
+            if (url.isNotEmpty)
+              Image.network(
+                url,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return const CoverArt(pattern: 'grid');
+                },
+                errorBuilder: (context, error, stackTrace) =>
+                    const CoverArt(pattern: 'grid'),
+              )
+            else
+              const CoverArt(pattern: 'grid'),
+            // video 叠 play 图标
+            if (isVideo)
+              Center(
+                child: Icon(Icons.play_circle_outline,
+                    size: 36, color: Colors.white.withAlpha(220)),
+              ),
+            // 溢出末格叠「+N」浅黑遮罩
+            if (overlayCount != null && overlayCount! > 0)
+              Container(
+                color: Colors.black.withAlpha(140),
+                alignment: Alignment.center,
+                child: Text(
+                  '+$overlayCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'NotoSerifSC',
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── 引用项目浮窗(任务⑮B:浅绿底 + 分类徽标)──
 class _QuoteProject extends ConsumerWidget {
   final String projectId;
 
@@ -198,28 +332,29 @@ class _QuoteProject extends ConsumerWidget {
           child: Container(
             padding: const EdgeInsets.all(KkSpacing.md),
             decoration: BoxDecoration(
-              color: KkColors.bgSubtle,
+              // 浅绿底(原型样式,区别于原 bgSubtle 中性底)
+              color: KkColors.mint,
               borderRadius: BorderRadius.circular(KkRadius.md),
-              border: Border.all(color: KkColors.bd),
             ),
             child: Row(
               children: [
-                // 封面占位(领域色块)
+                // 小封面(40×40,圆角,领域色块 + 图标)
                 Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: KkColors.mint,
+                    color: KkColors.bgCard,
                     borderRadius: BorderRadius.circular(KkRadius.sm),
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.bookmark_outlined,
-                    size: 18,
+                  child: Icon(
+                    _domainIcon(p.domain),
+                    size: 20,
                     color: KkColors.teal,
                   ),
                 ),
                 const SizedBox(width: KkSpacing.md),
+                // 项目名(t1 粗) + @handle(t3,作者 handle)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,16 +363,18 @@ class _QuoteProject extends ConsumerWidget {
                       Text(
                         p.title,
                         style: KkType.bodySm.copyWith(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
+                          color: KkColors.t1,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 2),
                       Text(
-                        p.summary,
-                        style: KkType.bodySm.copyWith(
+                        '@${p.authorId}',
+                        style: KkType.mono.copyWith(
+                          fontSize: 11,
                           color: KkColors.t3,
-                          fontSize: 12,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -245,14 +382,81 @@ class _QuoteProject extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right,
-                    size: 18, color: KkColors.t3),
+                const SizedBox(width: KkSpacing.sm),
+                // 右上分类徽标(teal 描边 pill + 中文 label)
+                _DomainBadge(domain: p.domain),
               ],
             ),
           ),
         );
       },
     );
+  }
+}
+
+// ── 分类徽标(teal 描边 pill + 中文 label,映射同 me _domainLabel)──
+class _DomainBadge extends StatelessWidget {
+  final String domain;
+
+  const _DomainBadge({required this.domain});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: KkSpacing.sm,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(KkRadius.pill),
+        border: Border.all(color: KkColors.teal, width: 0.8),
+      ),
+      child: Text(
+        _domainLabel(domain),
+        style: const TextStyle(
+          color: KkColors.teal,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'NotoSerifSC',
+        ),
+      ),
+    );
+  }
+
+  /// 7 领域值 → 中文标签(与 me 页 _domainLabel / profile_edit._domainOptions 同源)。
+  static const _map = <String, String>{
+    'ai_image': 'AI图',
+    'ai_video': 'AI视频',
+    'web': '网页',
+    'app': 'App',
+    'tool': '工具',
+    'opensource': '开源',
+    'prompt': 'Prompt',
+  };
+
+  static String _domainLabel(String value) => _map[value] ?? value;
+}
+
+/// 领域 → 图标(同 project_card._domainIcon,引用卡小封面用)。
+IconData _domainIcon(String domain) {
+  switch (domain) {
+    case 'ai_image':
+      return Icons.image_outlined;
+    case 'ai_video':
+      return Icons.play_circle_outline;
+    case 'web':
+      return Icons.language;
+    case 'app':
+      return Icons.phone_iphone;
+    case 'tool':
+      return Icons.build_outlined;
+    case 'opensource':
+      return Icons.code;
+    case 'prompt':
+      return Icons.chat_bubble_outline;
+    default:
+      return Icons.article_outlined;
   }
 }
 
