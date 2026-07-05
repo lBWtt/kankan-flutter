@@ -75,6 +75,10 @@ class KkRoutes {
   static String topic(String tag) => '/topic/${Uri.encodeComponent(tag)}';
   static const topicPattern = '/topic/:tag';
 
+  /// 话题广场 — 任务⑬:热门话题榜(全话题按 heat 降序)。
+  /// 发现页「今日话题 → 话题广场」入口,整行点 → topic(tag)。
+  static const topicPlaza = '/topics';
+
   /// 个人活动页 — me 屏热力图卡入口
   /// 大热力图 + 真实获收藏数 + 时间线
   static const activity = '/activity';

@@ -15,6 +15,7 @@ import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
 import 'avatar.dart';
 import 'comment_actions_sheet.dart';
+import 'report_sheet.dart';
 
 /// HANDOFF §6.1 CommentThread — 统一评论组件。
 ///
@@ -164,6 +165,13 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
       onCopy: () {}, // sheet 内部已真实现 Clipboard,空回调占位
       onEdit: () => _startEdit(c),
       onDelete: () => _confirmDelete(c),
+      // 任务⑫:他人评论显「举报」(comment_actions_sheet onReport 参数已存在,
+      // 传了自动出按钮)。sheet 内部先 pop 本 sheet 再回调,接 showReportSheet。
+      onReport: () => showReportSheet(
+        context,
+        targetType: 'comment',
+        targetId: c.id,
+      ),
       linkUrl: linkUrl,
     );
   }

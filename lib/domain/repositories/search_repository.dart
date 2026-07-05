@@ -97,6 +97,14 @@ class SearchRepository {
       ..sort((a, b) => b.heat.compareTo(a.heat));
   }
 
+  /// 任务⑬:话题广场 / 今日话题入口用 — 全话题按 heat 降序的 Top N。
+  ///
+  /// 复用 [searchTopics]('')(空 query → 聚合所有 project/post 的 tags 成 Topic,
+  /// 按 heat 降序),不新造 heat 公式(SPEC §6.4 禁编造)。取前 [limit] 个。
+  /// 话题广场屏用 limit=30;发现页今日话题横条用 limit=8。
+  List<Topic> topTopics({int limit = 30}) =>
+      searchTopics('').take(limit).toList();
+
   /// 综合 4 类结果数(给 search 屏顶部 tab badge 用)
   SearchCounts counts(String q) {
     return SearchCounts(

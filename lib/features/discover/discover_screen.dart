@@ -8,10 +8,12 @@ import '../../core/widgets/skeletons.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
+import '../../domain/repositories/search_repository.dart';
 import '../../providers/app_state_provider.dart';
 import '../../router/routes.dart';
 import '../shared/comment_bottom_sheet.dart';
 import '../shared/empty_state.dart';
+import '../shared/kk_chip.dart';
 import '../shared/post_card.dart';
 
 /// 发现屏 — HANDOFF §1 动态(轻)feed。
@@ -174,29 +176,44 @@ class _RecommendFeed extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(postRepositoryProvider);
+    // 任务⑫:渲染前过滤掉「不感兴趣」的动态(负反馈闭环)。
+    final ni = ref.watch(appStateProvider).notInterestedIds;
     // F-36:all() 已返回可变副本(F-36 改 List.of),可直接 sort。
     // 原 `repo.all()..sort()` 在 all() 返回 List.unmodifiable 时会运行时崩
     // (UnsupportedError: Cannot modify an unmodifiable list)。
-    final posts = repo.all()
+    final posts = repo
+        .all()
+        .where((p) => !ni.contains(p.id))
+        .toList()
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
 
-    if (posts.isEmpty) {
-      return ListView(
-        children: const [EmptyState(variant: EmptyStateVariant.feed)],
-      );
-    }
+    // 任务⑬:推荐流顶部「今日话题」横条(话题空则不渲染,零旁白)。
+    final topics = ref.watch(searchRepositoryProvider).topTopics(limit: 8);
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
-      itemCount: posts.length,
-      itemBuilder: (context, i) {
-        final post = posts[i];
-        return PostCard(
-          post: post,
-          onTap: () => context.push(KkRoutes.postDetail(post.id)),
-          onCommentTap: () => _showComments(context, ref, post),
-        );
-      },
+    final feed = posts.isEmpty
+        ? ListView(
+            children: const [EmptyState(variant: EmptyStateVariant.feed)],
+          )
+        : ListView.builder(
+            padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
+            itemCount: posts.length,
+            itemBuilder: (context, i) {
+              final post = posts[i];
+              return PostCard(
+                post: post,
+                onTap: () => context.push(KkRoutes.postDetail(post.id)),
+                onCommentTap: () => _showComments(context, ref, post),
+              );
+            },
+          );
+
+    if (topics.isEmpty) return feed;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _TodayTopicStrip(topics: topics),
+        Expanded(child: feed),
+      ],
     );
   }
 
@@ -208,6 +225,110 @@ class _RecommendFeed extends ConsumerWidget {
       hostType: 'post',
       hostId: post.id,
       initialComments: comments,
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 任务⑬:推荐流顶部「今日话题」横条
+// ──────────────────────────────────────────────────────────────────
+// 发现效率入口:左「今日话题」(t1 加粗)+ 右「话题广场 →」(teal → topicPlaza)
+// + 下方一排横向话题 chip(topTopics(limit:8),点 → topic(tag))。
+// 话题空 → 整条不渲染(由 _RecommendFeed 调用方守,本组件假定 topics 非空)。
+//
+// 视觉:bgCard 浮起(列表区 bgSubtle)+ 头部 + 横向 chip + 极浅 divider(参考
+// 任务⑦ _RecommendStrip 做法)。铁律:coral 只给 take(此处全 teal/中性);
+// 无 emoji(用 # + Icon);零旁白(标题就是"今日话题");触控 ≥44pt(KkChip
+// 外层 Tappable 内置 minSize 44)。
+class _TodayTopicStrip extends StatelessWidget {
+  final List<Topic> topics;
+
+  const _TodayTopicStrip({required this.topics});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: KkColors.bgCard,
+      padding: const EdgeInsets.symmetric(vertical: KkSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _header(context),
+          const SizedBox(height: KkSpacing.sm),
+          SizedBox(
+            // KkChip 外层 Tappable 强制 ≥44pt,横列表高度跟齐
+            height: 44,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
+              itemCount: topics.length,
+              separatorBuilder: (_, __) =>
+                  const SizedBox(width: KkSpacing.sm),
+              itemBuilder: (context, i) {
+                final t = topics[i];
+                return KkChip.solid(
+                  label: '#${t.tag}',
+                  onTap: () => context.push(KkRoutes.topic(t.tag)),
+                );
+              },
+            ),
+          ),
+          // 极浅 divider 分隔横条与 feed
+          const Divider(
+            color: KkColors.divider,
+            height: 1,
+            thickness: 0.5,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _header(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
+      child: Row(
+        children: [
+          Text(
+            '今日话题',
+            style: KkType.body.copyWith(
+              color: KkColors.t1,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          Tappable(
+            onTap: () => context.push(KkRoutes.topicPlaza),
+            child: Container(
+              // padding 撑到 ~44pt 热区
+              padding: const EdgeInsets.symmetric(
+                horizontal: KkSpacing.sm,
+                vertical: KkSpacing.sm,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '话题广场',
+                    style: KkType.bodySm.copyWith(
+                      fontSize: 12,
+                      color: KkColors.teal,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 14,
+                    color: KkColors.teal,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -231,9 +352,12 @@ class _FollowingFeed extends ConsumerWidget {
         ? const <String>{'chen', 'lin', 'wang'}
         : followed;
 
+    // 任务⑫:同样过滤「不感兴趣」(负反馈闭环对称推荐流)。
+    final ni = appState.notInterestedIds;
     final posts = repo
         .all()
-        .where((p) => effectiveFollowed.contains(p.authorId))
+        .where((p) =>
+            effectiveFollowed.contains(p.authorId) && !ni.contains(p.id))
         .toList()
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
 

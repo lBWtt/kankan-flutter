@@ -23,6 +23,7 @@ import '../features/ranking/ranking_screen.dart';
 import '../features/search/search_results_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/topic/topic_plaza_screen.dart';
 import '../features/topic/topic_screen.dart';
 import 'routes.dart';
 
@@ -203,6 +204,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           child: TopicScreen(
             tag: Uri.decodeComponent(state.pathParameters['tag']!),
           ),
+        ),
+      ),
+
+      // 话题广场(任务⑬:热门话题榜,发现页今日话题入口)
+      GoRoute(
+        path: KkRoutes.topicPlaza,
+        pageBuilder: (context, state) => _kkPage(
+          context: context,
+          state: state,
+          child: const TopicPlazaScreen(),
         ),
       ),
 

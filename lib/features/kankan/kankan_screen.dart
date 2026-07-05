@@ -248,7 +248,13 @@ class _ProjectList extends ConsumerWidget {
   // ── mock 数据源(内存 repo,默认)──
   Widget _mockList(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(projectRepositoryProvider);
-    final list = repo.sorted(sort, domain: domain);
+    // 任务⑫:渲染前过滤「不感兴趣」(负反馈闭环)。仅过滤 mock 分支,
+    // _remoteList(真数据)由后端负责,前端不动(避免双重过滤)。
+    final ni = ref.watch(appStateProvider).notInterestedIds;
+    final list = repo
+        .sorted(sort, domain: domain)
+        .where((p) => !ni.contains(p.id))
+        .toList();
     if (list.isEmpty) {
       return ListView(
         children: const [EmptyState(variant: EmptyStateVariant.generic)],

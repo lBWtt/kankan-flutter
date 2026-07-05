@@ -54,6 +54,12 @@ class AppStateData {
   /// query → 最近一次搜索时间戳(毫秒)。Map 天然去重,更新时刷新时间戳。
   final Map<String, int> recentSearchesMap;
 
+  // ── 不感兴趣(任务⑫:负反馈闭环)──
+  /// 标记「不感兴趣」的项目/动态 ID 集合(单向 add,不可撤销)。
+  /// discover 推荐/关注流 + kankan _mockList 渲染前过滤掉这些 ID。
+  /// kankan _remoteList(真数据)不过滤(后端另说)。
+  final Set<String> notInterestedIds;
+
   const AppStateData({
     this.themeMode = ThemeMode.light,
     this.currentTabIndex = 0,
@@ -64,6 +70,7 @@ class AppStateData {
     this.browseHistory = const [],
     this.unreadNotifIds = const {},
     this.recentSearchesMap = const {},
+    this.notInterestedIds = const {},
   });
 
   /// 向后兼容:返回 List<String>(按时间戳降序,最新在前)。
@@ -128,6 +135,7 @@ class AppStateData {
     List<String>? browseHistory,
     Set<String>? unreadNotifIds,
     Map<String, int>? recentSearchesMap,
+    Set<String>? notInterestedIds,
   }) =>
       AppStateData(
         themeMode: themeMode ?? this.themeMode,
@@ -139,6 +147,7 @@ class AppStateData {
         browseHistory: browseHistory ?? this.browseHistory,
         unreadNotifIds: unreadNotifIds ?? this.unreadNotifIds,
         recentSearchesMap: recentSearchesMap ?? this.recentSearchesMap,
+        notInterestedIds: notInterestedIds ?? this.notInterestedIds,
       );
 }
 
@@ -258,6 +267,16 @@ class AppStateNotifier extends Notifier<AppStateData> {
 
   void clearRecentSearches() {
     state = state.copyWith(recentSearchesMap: const {});
+  }
+
+  // ── 不感兴趣(任务⑫:负反馈闭环)──
+  /// 标记某项目/动态 ID 为「不感兴趣」(单向 add,幂等)。
+  /// discover 推荐/关注流 + kankan _mockList 渲染前过滤掉该 ID。
+  /// 不对称 toggleSave(单向):「不感兴趣」是减少推荐,无「恢复」语义。
+  void markNotInterested(String id) {
+    if (state.notInterestedIds.contains(id)) return;
+    final next = Set<String>.from(state.notInterestedIds)..add(id);
+    state = state.copyWith(notInterestedIds: next);
   }
 }
 

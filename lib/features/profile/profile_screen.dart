@@ -15,6 +15,7 @@ import '../shared/empty_state.dart';
 import '../shared/post_card.dart';
 import '../shared/profile_header.dart';
 import '../shared/project_card.dart';
+import '../shared/report_sheet.dart';
 
 /// 个人主页屏 — HANDOFF §6.5 真路由 + 三 Tab + 关注/拉黑/举报。
 ///
@@ -264,7 +265,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 label: '举报',
                 color: KkColors.t1,
                 weight: FontWeight.w600,
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  Navigator.pop(context);
+                  showReportSheet(
+                    context,
+                    targetType: 'user',
+                    targetId: widget.userId,
+                  );
+                },
               ),
             ],
             const Divider(height: 1, color: KkColors.divider),

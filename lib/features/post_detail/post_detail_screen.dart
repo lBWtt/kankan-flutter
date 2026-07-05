@@ -16,6 +16,7 @@ import '../../router/routes.dart';
 import '../shared/avatar.dart';
 import '../shared/comment_thread.dart';
 import '../shared/empty_state.dart';
+import '../shared/report_sheet.dart';
 import '../shared/share_sheet.dart';
 
 /// 动态详情页(PostDetailScreen)— HANDOFF §1 轻量详情。
@@ -46,13 +47,13 @@ class PostDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: KkColors.bg,
-      appBar: _appBar(context, post),
+      appBar: _appBar(context, ref, post),
       body: post == null ? _notFound(context) : _body(context, ref, post),
     );
   }
 
   // ── 顶栏:返回 / 作者名(单行 ellipsis)/ 更多 ──
-  PreferredSizeWidget _appBar(BuildContext context, Post? post) {
+  PreferredSizeWidget _appBar(BuildContext context, WidgetRef ref, Post? post) {
     final authorName = post?.authorId ?? '';
     return AppBar(
       backgroundColor: KkColors.bg,
@@ -68,7 +69,10 @@ class PostDetailScreen extends ConsumerWidget {
       ),
       actions: [
         Tappable(
-          onTap: () => _showMoreSheet(context),
+          // post 为 null(动态不存在)时不弹 more sheet(无意义)。
+          onTap: () {
+            if (post != null) _showMoreSheet(context, ref, post);
+          },
           child: const Icon(Icons.more_horiz, size: 22, color: KkColors.t1),
         ),
         const SizedBox(width: KkSpacing.sm),
@@ -283,7 +287,9 @@ class PostDetailScreen extends ConsumerWidget {
   }
 
   // ── 更多操作 sheet(举报 / 不感兴趣)— HANDOFF §5:t1 文字,非珊瑚橙 ──
-  void _showMoreSheet(BuildContext context) {
+  // 任务⑫:举报 → showReportSheet(post);不感兴趣 → markNotInterested +
+  // toast「已减少类似推荐」+ 回 feed(该动态从流过滤消失)。
+  void _showMoreSheet(BuildContext context, WidgetRef ref, Post post) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: KkColors.bgCard,
@@ -294,13 +300,35 @@ class PostDetailScreen extends ConsumerWidget {
             _sheetItem(
               icon: Icons.flag_outlined,
               label: '举报',
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                showReportSheet(
+                  context,
+                  targetType: 'post',
+                  targetId: post.id,
+                );
+              },
             ),
             const Divider(height: 1, color: KkColors.divider, indent: 56),
             _sheetItem(
               icon: Icons.visibility_off_outlined,
               label: '不感兴趣',
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                final messenger = ScaffoldMessenger.maybeOf(context);
+                Navigator.pop(context); // 关 more sheet
+                ref
+                    .read(appStateProvider.notifier)
+                    .markNotInterested(post.id);
+                // 回到 feed:discover/kankan watch appState,重建后该动态被过滤
+                if (context.canPop()) context.pop();
+                messenger?.showSnackBar(
+                  const SnackBar(
+                    content: Text('已减少类似推荐'),
+                    duration: Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
             ),
             const Divider(height: 1, color: KkColors.divider),
             _sheetItem(
