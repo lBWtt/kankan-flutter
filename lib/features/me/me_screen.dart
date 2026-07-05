@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
@@ -82,6 +83,9 @@ class MeScreen extends ConsumerWidget {
           fourthStatLabel: '收藏',
           fourthStatValue: savedCount,
           onTapFourthStat: () => context.go(KkRoutes.library),
+          // 换背景:image_picker 选图 → 存 app_state(会话内有效,web 是 blob URL)。
+          bannerImageUrl: appState.bannerImageUrl,
+          onChangeBanner: () => _pickBanner(ref),
           bannerActions: [
             BannerIconButton(
               icon: Icons.notifications_outlined,
@@ -116,6 +120,20 @@ class MeScreen extends ConsumerWidget {
         _recentlyViewedSection(context, ref, recentProjects),
       ],
     );
+  }
+
+  /// 换背景图:image_picker 选一张 → 存 app_state(会话内有效)。
+  /// web 端 file.path 是 blob URL,Image.network 可直接显示;移动端是文件路径。
+  Future<void> _pickBanner(WidgetRef ref) async {
+    try {
+      final file = await ImagePicker()
+          .pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (file != null) {
+        ref.read(appStateProvider.notifier).setBannerImage(file.path);
+      }
+    } catch (_) {
+      // 用户取消 / 权限拒绝,静默
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────

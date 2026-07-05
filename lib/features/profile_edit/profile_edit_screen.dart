@@ -334,28 +334,31 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }
 
   Widget _domainPill(String label, String value, bool selected) {
-    return Tappable(
-      onTap: () => _toggleDomain(value),
-      borderRadius: BorderRadius.circular(KkRadius.pill),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: KkSpacing.md,
-          vertical: KkSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: selected ? KkColors.teal : KkColors.bgSubtle,
-          borderRadius: BorderRadius.circular(KkRadius.pill),
-          border: Border.all(
-            color: selected ? KkColors.teal : KkColors.bd,
+    // 修 bug:原用 Tappable(内部 Center+minWidth44)在 Wrap 里撑满整行 →
+    // 7 个领域全宽堆叠成一长条(很丑)。改自适应 InkWell + 去掉 Center,
+    // chip 贴合内容,Wrap 里紧凑多行流式。选中态保留 teal 填充。
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _toggleDomain(value),
+        borderRadius: BorderRadius.circular(KkRadius.pill),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: KkSpacing.md,
+            vertical: KkSpacing.sm,
           ),
-        ),
-        child: Center(
+          decoration: BoxDecoration(
+            color: selected ? KkColors.teal : KkColors.bgSubtle,
+            borderRadius: BorderRadius.circular(KkRadius.pill),
+            border: Border.all(
+              color: selected ? KkColors.teal : KkColors.bd,
+            ),
+          ),
           child: Text(
             label,
             style: KkType.bodySm.copyWith(
               color: selected ? Colors.white : KkColors.t2,
-              fontWeight:
-                  selected ? FontWeight.w600 : FontWeight.normal,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
         ),

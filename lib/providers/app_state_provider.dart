@@ -70,6 +70,10 @@ class AppStateData {
   /// 免打扰:开 → 通知铃未读红点被抑制(effectiveUnreadCount 归零)。
   final bool dndEnabled;
 
+  /// 我的页 banner 背景图 URL(用户换背景;web 是 image_picker 的 blob URL,
+  /// 会话内有效不持久化。null → 用默认暖色渐变)。
+  final String? bannerImageUrl;
+
   const AppStateData({
     this.themeMode = ThemeMode.light,
     this.currentTabIndex = 0,
@@ -84,6 +88,7 @@ class AppStateData {
     this.fontScale = '标准',
     this.paperTexture = true,
     this.dndEnabled = false,
+    this.bannerImageUrl,
   });
 
   /// 免打扰生效后的未读数:DND 开 → 0(红点消失);否则真实未读数。
@@ -163,6 +168,7 @@ class AppStateData {
     String? fontScale,
     bool? paperTexture,
     bool? dndEnabled,
+    String? bannerImageUrl,
   }) =>
       AppStateData(
         themeMode: themeMode ?? this.themeMode,
@@ -178,6 +184,7 @@ class AppStateData {
         fontScale: fontScale ?? this.fontScale,
         paperTexture: paperTexture ?? this.paperTexture,
         dndEnabled: dndEnabled ?? this.dndEnabled,
+        bannerImageUrl: bannerImageUrl ?? this.bannerImageUrl,
       );
 }
 
@@ -194,6 +201,8 @@ class AppStateNotifier extends Notifier<AppStateData> {
   void setPaperTexture(bool on) =>
       state = state.copyWith(paperTexture: on);
   void setDndEnabled(bool on) => state = state.copyWith(dndEnabled: on);
+  void setBannerImage(String url) =>
+      state = state.copyWith(bannerImageUrl: url);
 
   void setTabIndex(int i) => state = state.copyWith(currentTabIndex: i);
 

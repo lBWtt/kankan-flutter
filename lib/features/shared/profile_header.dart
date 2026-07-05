@@ -63,6 +63,12 @@ class ProfileHeader extends StatelessWidget {
   /// 第 4 统计槽点击(me 传跳 library)
   final VoidCallback? onTapFourthStat;
 
+  /// banner 背景图 URL(null → 默认暖色渐变;非 null → 铺图 + 底部压暗保文字)
+  final String? bannerImageUrl;
+
+  /// 换背景回调(me 传 → 右下角显「换背景」相机按钮;profile 不传则不显)
+  final VoidCallback? onChangeBanner;
+
   const ProfileHeader({
     super.key,
     required this.user,
@@ -78,6 +84,8 @@ class ProfileHeader extends StatelessWidget {
     this.fourthStatLabel,
     this.fourthStatValue,
     this.onTapFourthStat,
+    this.bannerImageUrl,
+    this.onChangeBanner,
   });
 
   @override
@@ -93,24 +101,36 @@ class ProfileHeader extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // 渐变 banner(暖色柔和,浅珊瑚 → 暖纸底,不艳)
+              // banner 背景:有换过的背景图 → 铺图 + 底部渐隐到暖纸底(保头像/文字对比);
+              // 否则默认暖色渐变。
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
                 height: bannerHeight,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        const Color(0xFFF3E1CE), // 浅珊瑚/浅橙
-                        KkColors.bg, // 暖纸底 #FBF9F4
-                      ],
-                    ),
-                  ),
-                ),
+                child: (bannerImageUrl != null && bannerImageUrl!.isNotEmpty)
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            bannerImageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const _GradientBanner(),
+                          ),
+                          // 底部渐隐到暖纸底,让压在下沿的头像/名字清晰
+                          const DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.center,
+                                end: Alignment.bottomCenter,
+                                colors: [Color(0x00FBF9F4), KkColors.bg],
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : const _GradientBanner(),
               ),
               // 右上角槽(可选)
               if (bannerActions != null && bannerActions!.isNotEmpty)
@@ -118,6 +138,26 @@ class ProfileHeader extends StatelessWidget {
                   top: KkSpacing.sm,
                   right: KkSpacing.xs,
                   child: Row(children: bannerActions!),
+                ),
+              // 换背景相机按钮(仅 me 传 onChangeBanner 时显,右下角浮在 banner 上)
+              if (onChangeBanner != null)
+                Positioned(
+                  top: bannerHeight - 40,
+                  right: KkSpacing.md,
+                  child: Tappable(
+                    onTap: onChangeBanner,
+                    borderRadius: BorderRadius.circular(KkRadius.pill),
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: const BoxDecoration(
+                        color: Color(0x33000000),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.photo_camera_outlined,
+                          size: 16, color: Colors.white),
+                    ),
+                  ),
                 ),
               // 大头像(压 banner 底沿)+ 名字 + 副槽
               Positioned(
@@ -310,6 +350,27 @@ class _StatBlock extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(KkRadius.md),
       child: content,
+    );
+  }
+}
+
+// ── 默认暖色渐变 banner(浅珊瑚 → 暖纸底)──
+class _GradientBanner extends StatelessWidget {
+  const _GradientBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFF3E1CE), // 浅珊瑚/浅橙
+            KkColors.bg, // 暖纸底 #FBF9F4
+          ],
+        ),
+      ),
     );
   }
 }
