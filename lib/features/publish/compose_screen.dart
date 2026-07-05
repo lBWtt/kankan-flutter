@@ -71,7 +71,17 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     // 让依赖 postRepositoryProvider 的屏(discover 推荐/关注/profile 动态)刷新
     ref.invalidate(postRepositoryProvider);
     _toast('已发送');
-    if (context.canPop()) context.pop();
+    _close();
+  }
+
+  /// 关屏兜底(同 KkBackButton):能 pop 就 pop,否则回发现页根。
+  /// 修 bug:原来只 `if(canPop) pop()`,栈不可 pop 时「取消」哑火返回不了。
+  void _close() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(KkRoutes.discover);
+    }
   }
 
   void _toast(String msg) {
@@ -128,9 +138,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       child: Row(
         children: [
           Tappable(
-            onTap: () {
-              if (context.canPop()) context.pop();
-            },
+            onTap: _close,
             child: const Padding(
               padding: EdgeInsets.all(KkSpacing.md),
               child: Text('取消', style: KkType.body),

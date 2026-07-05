@@ -320,7 +320,11 @@ class PostDetailScreen extends ConsumerWidget {
                     .read(appStateProvider.notifier)
                     .markNotInterested(post.id);
                 // 回到 feed:discover/kankan watch appState,重建后该动态被过滤
-                if (context.canPop()) context.pop();
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go(KkRoutes.discover);
+                }
                 messenger?.showSnackBar(
                   const SnackBar(
                     content: Text('已减少类似推荐'),

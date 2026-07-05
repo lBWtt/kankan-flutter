@@ -98,7 +98,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               BannerIconButton(
                 icon: Icons.arrow_back,
                 onTap: () {
-                  if (context.canPop()) context.pop();
+                  // 兜底同 KkBackButton:profile 可深链(/u/:id),栈空时 pop 哑火 → 回发现页。
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go(KkRoutes.discover);
+                  }
                 },
               ),
               // 更多(拉黑/举报 sheet)

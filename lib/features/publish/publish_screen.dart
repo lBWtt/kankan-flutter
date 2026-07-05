@@ -9,6 +9,7 @@ import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../providers/publish_provider.dart';
+import '../../router/routes.dart';
 import 'widgets/add_takeaway_sheet.dart';
 import 'widgets/media_picker.dart';
 import 'widgets/publish_preview.dart';
@@ -100,7 +101,11 @@ class PublishScreen extends ConsumerWidget {
           Tappable(
             onTap: () {
               ref.read(publishDraftProvider.notifier).reset();
-              if (context.canPop()) context.pop();
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(KkRoutes.discover);
+              }
             },
             child: const Padding(
               padding: EdgeInsets.all(KkSpacing.md),
@@ -404,7 +409,11 @@ class PublishScreen extends ConsumerWidget {
     ref.invalidate(projectRepositoryProvider);
     _toast(context, '已发布: ${project.title}');
     ref.read(publishDraftProvider.notifier).reset();
-    if (context.canPop()) context.pop();
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(KkRoutes.discover);
+    }
   }
 
   void _toast(BuildContext context, String msg) {

@@ -129,7 +129,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     // 让依赖 userByIdProvider('me') 的屏(profile / me)重建显示新值。
     ref.invalidate(userByIdProvider('me'));
     _toast('已保存');
-    if (context.canPop()) context.pop();
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(KkRoutes.discover);
+    }
   }
 
   void _toast(String msg) {
