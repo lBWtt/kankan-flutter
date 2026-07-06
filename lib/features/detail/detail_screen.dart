@@ -7,6 +7,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/theme/noise_background.dart';
 import '../../core/widgets/cover_art.dart';
 import '../../core/widgets/kk_back_button.dart';
+import '../../core/widgets/kk_reaction_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
@@ -522,11 +523,13 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
                 ),
               ),
               const SizedBox(width: KkSpacing.sm),
-              // 点赞:F-6 接 toggleLike(参照 post_detail_screen._IconStat 写法)
-              _IconStat(
+              // 点赞:F-6 接 toggleLike(参照 post_detail_screen._IconStat 写法)。
+              // 任务 C:用 KkReactionButton——点亮时 scale 弹 + haptic(取消不弹)。
+              KkReactionButton(
                 icon: isLiked ? Icons.favorite : Icons.favorite_border,
                 value: _fmtCount(likeCount),
-                color: isLiked ? KkColors.like : null,
+                color: isLiked ? KkColors.like : KkColors.t2,
+                isLit: isLiked,
                 onTap: () => ref
                     .read(appStateProvider.notifier)
                     .toggleLike(project.id),

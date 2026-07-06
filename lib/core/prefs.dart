@@ -44,4 +44,15 @@ class PrefsKeys {
 
   /// 游客稳定 ID（主信号 how-to-interest 归属 + 登录归并）
   static const anonClientId = 'anon_client_id';
+
+  // ── 任务 A:草稿恢复（发动态 compose / 发项目 publish）──
+  // 存 JSON:文本类字段（媒体不存——web 的 blob URL 刷新失效）。
+  // 成功发布后删除（已发的不该再当草稿弹出来）。
+  // 用 draft_ 前缀避与 auth_* / anon_client_id 冲突。
+
+  /// compose 草稿 JSON:{content, tags}
+  static const draftCompose = 'draft_compose';
+
+  /// publish 草稿 JSON:{title, summary, authorNote, text, tags, domain}
+  static const draftPublish = 'draft_publish';
 }

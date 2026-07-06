@@ -7,6 +7,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/utils/parse_count.dart';
 import '../../core/utils/time_ago.dart';
 import '../../core/widgets/kk_back_button.dart';
+import '../../core/widgets/kk_reaction_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
@@ -234,10 +235,17 @@ class PostDetailScreen extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
           child: Row(
             children: [
-              _IconStat(
+              // 任务 C:点赞用 KkReactionButton——点亮 scale 弹 + haptic。
+              KkReactionButton(
                 icon: isLiked ? Icons.favorite : Icons.favorite_border,
                 value: formatCount(likeCount),
                 color: isLiked ? KkColors.like : KkColors.t3,
+                isLit: isLiked,
+                iconSize: 16,
+                padding: const EdgeInsets.symmetric(
+                  vertical: KkSpacing.sm,
+                  horizontal: KkSpacing.xs,
+                ),
                 onTap: () =>
                     ref.read(appStateProvider.notifier).toggleLike(post.id),
               ),

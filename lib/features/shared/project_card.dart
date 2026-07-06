@@ -7,6 +7,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/utils/parse_count.dart';
 import '../../core/utils/time_ago.dart';
 import '../../core/widgets/cover_art.dart';
+import '../../core/widgets/kk_reaction_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../data/seed/mock_seed.dart';
@@ -140,12 +141,19 @@ class ProjectCard extends ConsumerWidget {
                   // 真实计数行(HANDOFF §6.10)
                   Row(
                     children: [
-                      _Stat(
+                      // 任务 C:点赞用 KkReactionButton——点亮 scale 弹 + haptic。
+                      KkReactionButton(
                         icon: isLiked
                             ? Icons.favorite
                             : Icons.favorite_border,
                         value: formatCount(likeCount),
                         color: isLiked ? KkColors.like : KkColors.t3,
+                        isLit: isLiked,
+                        iconSize: 14,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2,
+                          vertical: 4,
+                        ),
                         onTap: () => ref
                             .read(appStateProvider.notifier)
                             .toggleLike(project.id),
@@ -167,18 +175,18 @@ class ProjectCard extends ConsumerWidget {
                         ),
                       ],
                       const Spacer(),
-                      // 收藏(图标按钮,44pt 热区)
-                      Tappable(
+                      // 收藏(任务 C:用 KkReactionButton——点亮 scale 弹 + haptic)。
+                      KkReactionButton(
+                        icon: isSaved
+                            ? Icons.bookmark
+                            : Icons.bookmark_border_outlined,
+                        color: isSaved ? KkColors.teal : KkColors.t3,
+                        isLit: isSaved,
+                        iconSize: 18,
+                        padding: EdgeInsets.zero,
                         onTap: () => ref
                             .read(appStateProvider.notifier)
                             .toggleSave(project.id),
-                        child: Icon(
-                          isSaved
-                              ? Icons.bookmark
-                              : Icons.bookmark_border_outlined,
-                          size: 18,
-                          color: isSaved ? KkColors.teal : KkColors.t3,
-                        ),
                       ),
                     ],
                   ),

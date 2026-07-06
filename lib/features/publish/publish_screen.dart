@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/network/app_exception.dart';
+import '../../core/prefs.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/theme/noise_background.dart';
@@ -29,11 +32,198 @@ import 'widgets/publish_preview.dart';
 ///   - 全程零旁白、不选类型
 ///
 /// 产出结构 = 详情端可组合渲染所读的 {media(视频优先), actions:[take/go/how]}
-class PublishScreen extends ConsumerWidget {
+class PublishScreen extends ConsumerStatefulWidget {
   const PublishScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PublishScreen> createState() => _PublishScreenState();
+}
+
+class _PublishScreenState extends ConsumerState<PublishScreen> {
+  // 任务 A:草稿恢复(文本类字段;媒体 blob URL 刷新失效不存)。
+  _PublishDraftSnapshot? _pendingDraft;
+  bool _showDraftBanner = false;
+  bool _sent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDraft();
+  }
+
+  void _loadDraft() {
+    // 当前 draft state 非空(内存里跨屏保留)→ 不弹横条(用户在编辑中)。
+    // draft state 空(const 初始,app 重启后)→ 读 prefs,有草稿则弹横条。
+    final c = ref.read(publishDraftProvider);
+    final hasContent = c.title.isNotEmpty ||
+        c.summary.isNotEmpty ||
+        c.authorNote.isNotEmpty ||
+        (c.text != null && c.text!.isNotEmpty) ||
+        c.tags.isNotEmpty;
+    if (hasContent) {
+      _showDraftBanner = false;
+      return;
+    }
+    final raw = ref.read(prefsProvider).getString(PrefsKeys.draftPublish);
+    if (raw == null || raw.isEmpty) {
+      _showDraftBanner = false;
+      return;
+    }
+    try {
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      _pendingDraft = _PublishDraftSnapshot(
+        title: (m['title'] as String?) ?? '',
+        summary: (m['summary'] as String?) ?? '',
+        authorNote: (m['authorNote'] as String?) ?? '',
+        text: (m['text'] as String?) ?? '',
+        tags: (m['tags'] as List<dynamic>?)?.cast<String>() ?? const [],
+        domain: m['domain'] as String?,
+        hadMedia: (m['hadMedia'] as bool?) ?? false,
+      );
+      final d = _pendingDraft!;
+      _showDraftBanner = d.title.isNotEmpty ||
+          d.summary.isNotEmpty ||
+          d.authorNote.isNotEmpty ||
+          d.text.isNotEmpty ||
+          d.tags.isNotEmpty;
+    } catch (_) {
+      _pendingDraft = null;
+      _showDraftBanner = false;
+    }
+  }
+
+  void _restoreDraft() {
+    final d = _pendingDraft;
+    if (d == null) return;
+    final n = ref.read(publishDraftProvider.notifier);
+    n.setTitle(d.title);
+    n.setSummary(d.summary);
+    n.setAuthorNote(d.authorNote);
+    if (d.text.isNotEmpty) n.setText(d.text);
+    if (d.domain != null) n.setDomain(d.domain!);
+    for (final t in d.tags) {
+      n.addTag(t);
+    }
+    setState(() => _showDraftBanner = false);
+  }
+
+  void _dismissDraft() {
+    ref.read(prefsProvider).remove(PrefsKeys.draftPublish);
+    setState(() {
+      _showDraftBanner = false;
+      _pendingDraft = null;
+    });
+  }
+
+  void _saveDraft() {
+    final d = ref.read(publishDraftProvider);
+    final hasDraft = d.title.isNotEmpty ||
+        d.summary.isNotEmpty ||
+        d.authorNote.isNotEmpty ||
+        (d.text != null && d.text!.isNotEmpty) ||
+        d.tags.isNotEmpty;
+    final prefs = ref.read(prefsProvider);
+    if (hasDraft) {
+      prefs.setString(
+        PrefsKeys.draftPublish,
+        jsonEncode({
+          'title': d.title,
+          'summary': d.summary,
+          'authorNote': d.authorNote,
+          'text': d.text ?? '',
+          'tags': d.tags,
+          'domain': d.domain,
+          'hadMedia': d.media.isNotEmpty,
+        }),
+      );
+    } else {
+      prefs.remove(PrefsKeys.draftPublish);
+    }
+  }
+
+  @override
+  void dispose() {
+    // 任务 A:未发送则存草稿(防丢稿);已发送(_sent=true)则跳过(_addAndFinish 已清 key)。
+    if (!_sent) _saveDraft();
+    super.dispose();
+  }
+
+  // ── 任务 A:草稿恢复横条(bgSubtle 底 + 一行字 + 恢复/忽略;hadMedia 时加小字提示)──
+  Widget _draftBanner() {
+    final hadMedia = _pendingDraft?.hadMedia ?? false;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: KkSpacing.lg,
+        vertical: KkSpacing.md,
+      ),
+      decoration: const BoxDecoration(
+        color: KkColors.bgSubtle,
+        border: Border(bottom: BorderSide(color: KkColors.divider)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '恢复上次草稿?',
+                  style: KkType.bodySm.copyWith(
+                    color: KkColors.t1,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (hadMedia)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '图片需重新添加',
+                      style: KkType.mono.copyWith(
+                        fontSize: 10,
+                        color: KkColors.t3,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Tappable(
+            onTap: _dismissDraft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: KkSpacing.md,
+                vertical: KkSpacing.sm,
+              ),
+              child: Text(
+                '忽略',
+                style: KkType.bodySm.copyWith(color: KkColors.t3),
+              ),
+            ),
+          ),
+          Tappable(
+            onTap: _restoreDraft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: KkSpacing.md,
+                vertical: KkSpacing.sm,
+              ),
+              child: Text(
+                '恢复',
+                style: KkType.bodySm.copyWith(
+                  color: KkColors.teal,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final draft = ref.watch(publishDraftProvider);
 
     return Scaffold(
@@ -45,6 +235,8 @@ class PublishScreen extends ConsumerWidget {
             children: [
               // 顶栏(发布/取消)
               _topBar(context, ref),
+              // 任务 A:草稿恢复横条。
+              if (_showDraftBanner) _draftBanner(),
               // 表单
               Expanded(
                 child: ListView(
@@ -104,7 +296,7 @@ class PublishScreen extends ConsumerWidget {
         children: [
           Tappable(
             onTap: () {
-              ref.read(publishDraftProvider.notifier).reset();
+              // 任务 A:取消不 reset()(保留 draft state,dispose 存 prefs 防丢稿)。
               if (context.canPop()) {
                 context.pop();
               } else {
@@ -466,6 +658,9 @@ class PublishScreen extends ConsumerWidget {
     ref.invalidate(projectRepositoryProvider);
     _toast(context, msg);
     ref.read(publishDraftProvider.notifier).reset();
+    // 任务 A:发布成功清草稿 key + 标记 _sent(dispose 不再存)。
+    ref.read(prefsProvider).remove(PrefsKeys.draftPublish);
+    _sent = true;
     if (context.canPop()) {
       context.pop();
     } else {
@@ -579,4 +774,25 @@ class _TagChip extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── 任务 A:publish 草稿快照(只存文本类字段;媒体 blob URL 刷新失效不存)──
+class _PublishDraftSnapshot {
+  final String title;
+  final String summary;
+  final String authorNote;
+  final String text;
+  final List<String> tags;
+  final String? domain;
+  final bool hadMedia;
+
+  const _PublishDraftSnapshot({
+    required this.title,
+    required this.summary,
+    required this.authorNote,
+    required this.text,
+    required this.tags,
+    required this.domain,
+    required this.hadMedia,
+  });
 }

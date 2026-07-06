@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/prefs.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/tappable.dart';
@@ -38,8 +41,79 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   final List<String> _tags = [];
   String? _quoteProjectId;
 
+  // 任务 A:草稿恢复。_pendingDraft 进屏时从 prefs 读,非空则显横条;
+  // _sent=true 表示已成功发送(dispose 时不再存草稿,且已清 key)。
+  _ComposeDraft? _pendingDraft;
+  bool _showDraftBanner = false;
+  bool _sent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDraft();
+  }
+
+  void _loadDraft() {
+    final raw = ref.read(prefsProvider).getString(PrefsKeys.draftCompose);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      _pendingDraft = _ComposeDraft(
+        content: (m['content'] as String?) ?? '',
+        tags: (m['tags'] as List<dynamic>?)?.cast<String>() ?? const [],
+        hadMedia: (m['hadMedia'] as bool?) ?? false,
+      );
+      _showDraftBanner = _pendingDraft != null &&
+          (_pendingDraft!.content.trim().isNotEmpty ||
+              _pendingDraft!.tags.isNotEmpty);
+    } catch (_) {
+      _pendingDraft = null;
+      _showDraftBanner = false;
+    }
+  }
+
+  void _restoreDraft() {
+    if (_pendingDraft == null) return;
+    setState(() {
+      _contentCtrl.text = _pendingDraft!.content;
+      _tags
+        ..clear()
+        ..addAll(_pendingDraft!.tags);
+      _showDraftBanner = false;
+    });
+  }
+
+  void _dismissDraft() {
+    ref.read(prefsProvider).remove(PrefsKeys.draftCompose);
+    setState(() {
+      _showDraftBanner = false;
+      _pendingDraft = null;
+    });
+  }
+
+  void _saveDraft() {
+    final content = _contentCtrl.text;
+    final tags = _tags;
+    final hasDraft = content.trim().isNotEmpty || tags.isNotEmpty;
+    final prefs = ref.read(prefsProvider);
+    if (hasDraft) {
+      prefs.setString(
+        PrefsKeys.draftCompose,
+        jsonEncode({
+          'content': content,
+          'tags': tags,
+          'hadMedia': _media.isNotEmpty,
+        }),
+      );
+    } else {
+      prefs.remove(PrefsKeys.draftCompose);
+    }
+  }
+
   @override
   void dispose() {
+    // 任务 A:未发送则存草稿(防丢稿);已发送(_sent=true)则跳过(_send 已清 key)。
+    if (!_sent) _saveDraft();
     _contentCtrl.dispose();
     super.dispose();
   }
@@ -70,6 +144,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     ref.read(postRepositoryProvider).addPost(post);
     // 让依赖 postRepositoryProvider 的屏(discover 推荐/关注/profile 动态)刷新
     ref.invalidate(postRepositoryProvider);
+    // 任务 A:成功发送后清草稿 key(已发的不当草稿弹)+ 标记 _sent(dispose 不再存)。
+    ref.read(prefsProvider).remove(PrefsKeys.draftCompose);
+    _sent = true;
     _toast('已发送');
     _close();
   }
@@ -185,6 +262,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         child: Column(
           children: [
             _topBar(),
+            // 任务 A:草稿恢复横条(进屏时 prefs 有草稿才显;恢复/忽略后消失)。
+            if (_showDraftBanner) _draftBanner(),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
@@ -265,6 +344,80 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   fontFamily: 'NotoSerifSC',
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 任务 A:草稿恢复横条(bgSubtle 底 + 一行字 + 恢复/忽略;hadMedia 时加小字提示)──
+  Widget _draftBanner() {
+    final hadMedia = _pendingDraft?.hadMedia ?? false;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: KkSpacing.lg,
+        vertical: KkSpacing.md,
+      ),
+      decoration: const BoxDecoration(
+        color: KkColors.bgSubtle,
+        border: Border(bottom: BorderSide(color: KkColors.divider)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '恢复上次草稿?',
+                  style: KkType.bodySm.copyWith(
+                    color: KkColors.t1,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (hadMedia)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '图片需重新添加',
+                      style: KkType.mono.copyWith(
+                        fontSize: 10,
+                        color: KkColors.t3,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Tappable(
+            onTap: _dismissDraft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: KkSpacing.md,
+                vertical: KkSpacing.sm,
+              ),
+              child: Text(
+                '忽略',
+                style: KkType.bodySm.copyWith(color: KkColors.t3),
+              ),
+            ),
+          ),
+          Tappable(
+            onTap: _restoreDraft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: KkSpacing.md,
+                vertical: KkSpacing.sm,
+              ),
+              child: Text(
+                '恢复',
+                style: KkType.bodySm.copyWith(
+                  color: KkColors.teal,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -706,4 +859,17 @@ class _QuoteProjectCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── 任务 A:compose 草稿数据(只存文本类字段;媒体 blob URL 刷新失效不存)──
+class _ComposeDraft {
+  final String content;
+  final List<String> tags;
+  final bool hadMedia;
+
+  const _ComposeDraft({
+    required this.content,
+    required this.tags,
+    required this.hadMedia,
+  });
 }

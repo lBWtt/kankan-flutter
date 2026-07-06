@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
@@ -52,6 +53,7 @@ class PublishEntrySheet extends StatelessWidget {
           ),
           Text('发布', style: KkType.h2),
           const SizedBox(height: KkSpacing.lg),
+          // 任务 B:两个选项错峰滑入 + 淡入(220ms easeOutCubic,第二个 delay 60ms)。
           _entry(
             context,
             icon: Icons.edit_outlined,
@@ -61,7 +63,12 @@ class PublishEntrySheet extends StatelessWidget {
               Navigator.pop(context);
               onPublishPost?.call();
             },
-          ),
+          ).animate().slideY(
+                begin: 0.25,
+                end: 0,
+                duration: 220.ms,
+                curve: Curves.easeOutCubic,
+              ).fadeIn(duration: 220.ms),
           _entry(
             context,
             icon: Icons.work_outline,
@@ -71,7 +78,12 @@ class PublishEntrySheet extends StatelessWidget {
               // sheet 先不关,让 router 的回调决定(回调里会 pop)
               onPublishProject?.call();
             },
-          ),
+          ).animate().slideY(
+                begin: 0.25,
+                end: 0,
+                duration: 220.ms,
+                curve: Curves.easeOutCubic,
+              ).fadeIn(duration: 220.ms, delay: 60.ms),
           const SizedBox(height: KkSpacing.xl),
         ],
       ),
