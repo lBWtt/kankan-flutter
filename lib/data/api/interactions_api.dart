@@ -27,6 +27,25 @@ class InteractionsApi {
       throw AppException.fromDio(e);
     }
   }
+
+  /// GET /me/favorites → 我收藏过的项目 id 列表（读通路：登录后回填收藏态）。
+  /// 后端返回 {items:[ProjectCard...]}，这里只取 id（够点亮收藏心；卡片本身用不上）。
+  Future<List<String>> listFavoriteIds() async {
+    try {
+      final resp = await _dio.get<dynamic>('/me/favorites');
+      final data = resp.data;
+      final rawItems =
+          data is Map ? (data['items'] ?? const <dynamic>[]) : (data ?? const <dynamic>[]);
+      final items = rawItems is List ? rawItems : const <dynamic>[];
+      return items
+          .whereType<Map<dynamic, dynamic>>()
+          .map((m) => m['id']?.toString())
+          .whereType<String>()
+          .toList();
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
 }
 
 final interactionsApiProvider = Provider<InteractionsApi>(

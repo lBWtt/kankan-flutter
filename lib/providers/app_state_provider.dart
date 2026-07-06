@@ -193,7 +193,42 @@ class AppStateData {
 /// 全局状态 Notifier(手动,无 codegen)。
 class AppStateNotifier extends Notifier<AppStateData> {
   @override
-  AppStateData build() => AppStateData.initial();
+  AppStateData build() {
+    // 读通路:登录态变化时同步后端收藏。
+    //   游客→登录:拉 /me/favorites 回填收藏心(退出重登收藏还在)。
+    //   登录→登出:移除后端来的收藏(UUID id),保留 mock 演示收藏(短 id)。
+    ref.listen(authProvider, (prev, next) {
+      final was = prev?.isLoggedIn ?? false;
+      if (!was && next.isLoggedIn) {
+        _loadFavoritesFromBackend();
+      } else if (was && !next.isLoggedIn) {
+        _dropBackendFavorites();
+      }
+    });
+    return AppStateData.initial();
+  }
+
+  /// 登录后拉后端收藏,并入 savedProjectIds(mock 演示收藏一并保留)。失败静默。
+  Future<void> _loadFavoritesFromBackend() async {
+    try {
+      final ids = await ref.read(interactionsApiProvider).listFavoriteIds();
+      if (ids.isEmpty) return;
+      final next = Set<String>.from(state.savedProjectIds)..addAll(ids);
+      state = state.copyWith(savedProjectIds: next);
+    } catch (_) {
+      // 拉取失败:保持现状,不影响本地演示收藏
+    }
+  }
+
+  /// 登出:从 savedProjectIds 移除后端项目(UUID),保留 mock 演示收藏。
+  void _dropBackendFavorites() {
+    final next = state.savedProjectIds
+        .where((id) => !_looksLikeBackendId(id))
+        .toSet();
+    if (next.length != state.savedProjectIds.length) {
+      state = state.copyWith(savedProjectIds: next);
+    }
+  }
 
   void setThemeMode(ThemeMode mode) => state = state.copyWith(themeMode: mode);
 
