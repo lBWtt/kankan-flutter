@@ -28,6 +28,20 @@ class InteractionsApi {
     }
   }
 
+  /// 订阅 / 取消订阅实现线索。[on]=true → POST（201）；false → DELETE（204）。
+  /// 需登录（后端 auth_required）。
+  Future<void> setClueSubscription(String projectId, bool on) async {
+    try {
+      if (on) {
+        await _dio.post<dynamic>('/projects/$projectId/clue-subscription');
+      } else {
+        await _dio.delete<dynamic>('/projects/$projectId/clue-subscription');
+      }
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
   /// GET /me/favorites → 我收藏过的项目 id 列表（读通路：登录后回填收藏态）。
   /// 后端返回 {items:[ProjectCard...]}，这里只取 id（够点亮收藏心；卡片本身用不上）。
   Future<List<String>> listFavoriteIds() async {

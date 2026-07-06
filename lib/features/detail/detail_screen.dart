@@ -10,8 +10,12 @@ import '../../core/widgets/kk_back_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../core/network/app_exception.dart';
+import '../../core/utils/backend_id.dart';
+import '../../data/api/projects_api.dart';
 import '../../data/seed/mock_seed.dart';
 import '../../providers/app_state_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/clue_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
@@ -252,13 +256,30 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
+              final messenger = ScaffoldMessenger.of(context);
+              // 真后端项目(UUID)+ 登录 → 先后端软删;失败提示、不本地删(保持一致)。
+              // mock 项目 / 未登录 → 只本地删(演示)。
+              if (ref.read(authProvider).isLoggedIn &&
+                  looksLikeBackendId(project.id)) {
+                try {
+                  await ref.read(projectsApiProvider).delete(project.id);
+                } on AppException catch (e) {
+                  messenger.showSnackBar(SnackBar(
+                    content: Text('删除失败：${e.message}'),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                  return;
+                }
+              }
               ref.read(projectRepositoryProvider).removeProject(project.id);
               // 刷新依赖 projectRepositoryProvider / projectByIdProvider 的屏
               // (discover/kankan/profile/me 重建后该项目消失)。
               ref.invalidate(projectByIdProvider(project.id));
               // 删除后在详情页 → pop 回上一页。
+              if (!context.mounted) return;
               if (context.canPop()) {
                 context.pop();
               } else {

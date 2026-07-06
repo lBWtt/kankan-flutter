@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/utils/backend_id.dart';
 import '../data/api/interactions_api.dart';
 import '../data/seed/mock_seed.dart';
 import '../domain/models/models.dart';
@@ -223,7 +224,7 @@ class AppStateNotifier extends Notifier<AppStateData> {
   /// 登出:从 savedProjectIds 移除后端项目(UUID),保留 mock 演示收藏。
   void _dropBackendFavorites() {
     final next = state.savedProjectIds
-        .where((id) => !_looksLikeBackendId(id))
+        .where((id) => !looksLikeBackendId(id))
         .toSet();
     if (next.length != state.savedProjectIds.length) {
       state = state.copyWith(savedProjectIds: next);
@@ -286,7 +287,7 @@ class AppStateNotifier extends Notifier<AppStateData> {
   /// mock 项目（短 id 如 'p1'）本地即真源，不碰后端（发了也会 404）。
   Future<void> _syncFavorite(String projectId, {required bool on}) async {
     if (!ref.read(authProvider).isLoggedIn) return;
-    if (!_looksLikeBackendId(projectId)) return;
+    if (!looksLikeBackendId(projectId)) return;
     try {
       await ref.read(interactionsApiProvider).setFavorite(projectId, on);
     } catch (_) {
@@ -300,9 +301,6 @@ class AppStateNotifier extends Notifier<AppStateData> {
       state = state.copyWith(savedProjectIds: revert);
     }
   }
-
-  /// 粗判是否后端项目 id（UUID：含 '-' 且长度 ≥ 32）。mock id 是 'p1'/'p2' 这类短串。
-  bool _looksLikeBackendId(String id) => id.contains('-') && id.length >= 32;
 
   // ── 关注 ──
   bool isFollowing(String userId) =>

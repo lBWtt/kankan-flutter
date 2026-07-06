@@ -51,6 +51,16 @@ class ProjectsApi {
     }
   }
 
+  /// DELETE /projects/{id} → 软删自己的项目（需登录，own-only，后端 status=deleted）。
+  /// 404/403 等经 AppException 透出。
+  Future<void> delete(String id) async {
+    try {
+      await _dio.delete<dynamic>('/projects/$id');
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
   /// GET /projects/{id} → 单个项目详情（比卡片多 intro/author/media/counts）。
   Future<Project?> detail(String id) async {
     try {

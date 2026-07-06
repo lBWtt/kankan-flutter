@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/utils/backend_id.dart';
+import '../data/api/interactions_api.dart';
 import '../domain/models/models.dart';
 import '../domain/repositories/project_repository.dart';
+import 'auth_provider.dart';
 
 /// 实现线索(Implementation Clue)— ZAI_PLAYBOOK P0 主信号下游的网络层。
 ///
@@ -377,13 +380,36 @@ class ClueInteractionNotifier extends Notifier<ClueInteractionState> {
     return nextCounts[projectId]!;
   }
 
-  /// 切换订阅(ZAI_PLAYBOOK Part 4 订阅区:登录拦截点)。
-  /// mock 下用户恒为 'me',直接切换。真实场景:未登录 → 走全局登录流程,
-  /// 登录成功后再调本方法。屏内留 onSubscribeTap 回调接登录 helper。
+  /// 切换订阅(ZAI_PLAYBOOK Part 4 订阅区)。乐观切换本地态;
+  /// 登录 + 真后端项目(UUID)→ 同步 POST/DELETE /clue-subscription,失败回滚。
+  /// mock 项目 / 未登录 → 只本地切换(演示,不设登录墙)。
   void toggleSubscription(String projectId) {
+    final wasSubscribed = state.subscribedProjectIds.contains(projectId);
     final next = Set<String>.from(state.subscribedProjectIds);
-    if (!next.add(projectId)) next.remove(projectId);
-    state = state.copyWith(subscribedProjectIds: next);
+    if (wasSubscribed) {
+      next.remove(projectId);
+    } else {
+      next.add(projectId);
+    }
+    state = state.copyWith(subscribedProjectIds: next); // 乐观更新
+    _syncSubscription(projectId, on: !wasSubscribed);
+  }
+
+  /// 订阅落库:登录 + 真后端项目才发请求;失败回滚本地,保持一致。
+  Future<void> _syncSubscription(String projectId, {required bool on}) async {
+    if (!ref.read(authProvider).isLoggedIn) return;
+    if (!looksLikeBackendId(projectId)) return;
+    try {
+      await ref.read(interactionsApiProvider).setClueSubscription(projectId, on);
+    } catch (_) {
+      final revert = Set<String>.from(state.subscribedProjectIds);
+      if (on) {
+        revert.remove(projectId);
+      } else {
+        revert.add(projectId);
+      }
+      state = state.copyWith(subscribedProjectIds: revert);
+    }
   }
 }
 
