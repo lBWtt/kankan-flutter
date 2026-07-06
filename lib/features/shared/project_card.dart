@@ -13,7 +13,6 @@ import '../../domain/models/models.dart';
 import '../../data/seed/mock_seed.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
-import '../../domain/repositories/project_repository.dart';
 import '../../router/routes.dart';
 import 'avatar.dart';
 
@@ -281,8 +280,8 @@ class _Cover extends StatelessWidget {
     final isVideo = hasMedia && first!.type == 'video';
     // 封面 URL:image 用 first.url;video 用 first.poster;无 media → null(走 CoverArt 占位)
     final coverUrl = isImage
-        ? first!.url
-        : (isVideo ? first!.poster : null);
+        ? first.url
+        : (isVideo ? first.poster : null);
 
     final pattern = isCompact ? 'grid' : _domainPattern(project.domain);
     final domainIcon = _domainIcon(project.domain);
@@ -386,31 +385,15 @@ class _Stat extends StatelessWidget {
   final IconData icon;
   final String value;
   final Color color;
-  final VoidCallback? onTap;
 
   const _Stat({
     required this.icon,
     required this.value,
     required this.color,
-    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (onTap != null) {
-      return Tappable(
-        onTap: onTap,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Text(value,
-                style: KkType.mono.copyWith(fontSize: 11, color: color)),
-          ],
-        ),
-      );
-    }
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

@@ -587,8 +587,8 @@ class _DetailCover extends StatelessWidget {
     final isVideo = hasMedia && first!.type == 'video';
     // 封面 URL:与 ProjectCard._Cover 同源(image→url, video→poster, 无→null)
     final coverUrl = isImage
-        ? first!.url
-        : (isVideo ? first!.poster : null);
+        ? first.url
+        : (isVideo ? first.poster : null);
     final pattern = _domainPattern(project.domain);
 
     return SizedBox(
