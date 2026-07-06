@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -104,7 +106,7 @@ class PublishDraft {
   /// 已知分叉（媒体）：media 是 image_picker 的 blob URL，未走 POST /media 上传，
   /// 故 media_ids 空——真媒体上传是独立后续。domain(成果类型)与后端 domains(职业枚举)
   /// 不同源，不透传，交后端按 vertical 兜底。
-  Map<String, dynamic> toCreateJson() {
+  Map<String, dynamic> toCreateJson({List<String> mediaIds = const []}) {
     // intro：优先作者的话，其次正文，再次一句话价值（尽量凑够准入 20 字）。
     final introParts = <String>[
       if (authorNote.trim().isNotEmpty) authorNote.trim(),
@@ -119,6 +121,7 @@ class PublishDraft {
       'source_kind': 'user_original',
       'is_original': true,
       'tags': tags,
+      if (mediaIds.isNotEmpty) 'media_ids': mediaIds,
     };
   }
 
@@ -149,6 +152,14 @@ class PublishDraftNotifier extends Notifier<PublishDraft> {
   @override
   PublishDraft build() => const PublishDraft();
 
+  /// 媒体真实字节缓存（url → bytes）。发布时上传后端拿 media_id 用。
+  /// MediaItem 只存 blob url（web 上传要真字节），故 pick 时读一次缓存这里。
+  /// notifier 实例稳定（非 autoDispose），缓存跨 state 变更保留，reset 清空。
+  final Map<String, Uint8List> _mediaBytes = {};
+
+  /// 取某条媒体的字节（发布上传用）。没有则 null（如老数据/无字节）。
+  Uint8List? bytesFor(String url) => _mediaBytes[url];
+
   void setTitle(String t) => state = state.copyWith(title: t);
   void setSummary(String s) => state = state.copyWith(summary: s);
   void setDomain(String d) => state = state.copyWith(domain: d);
@@ -164,10 +175,18 @@ class PublishDraftNotifier extends Notifier<PublishDraft> {
       state = state.copyWith(tags: state.tags.where((t) => t != tag).toList());
 
   /// 加媒体(图/视频)。HANDOFF §4:传图视频→成果,视频自动排前由 toProject 处理。
-  void addMedia(MediaItem m) => state = state.copyWith(media: [...state.media, m]);
+  /// [bytes] 非空则缓存(发布时真上传后端)；null 保持旧行为(mock 演示)。
+  void addMedia(MediaItem m, [Uint8List? bytes]) {
+    if (bytes != null) _mediaBytes[m.url] = bytes;
+    state = state.copyWith(media: [...state.media, m]);
+  }
+
   void removeMediaAt(int i) {
     final list = [...state.media];
-    if (i >= 0 && i < list.length) list.removeAt(i);
+    if (i >= 0 && i < list.length) {
+      _mediaBytes.remove(list[i].url); // 连带清缓存字节
+      list.removeAt(i);
+    }
     state = state.copyWith(media: list);
   }
 
@@ -180,7 +199,10 @@ class PublishDraftNotifier extends Notifier<PublishDraft> {
   }
 
   /// 重置(发布成功后调用)
-  void reset() => state = const PublishDraft();
+  void reset() {
+    _mediaBytes.clear();
+    state = const PublishDraft();
+  }
 }
 
 final publishDraftProvider =

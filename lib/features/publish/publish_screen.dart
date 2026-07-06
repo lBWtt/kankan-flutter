@@ -7,6 +7,7 @@ import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/theme/noise_background.dart';
 import '../../core/widgets/tappable.dart';
+import '../../data/api/media_api.dart';
 import '../../data/api/projects_api.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
@@ -405,8 +406,11 @@ class PublishScreen extends ConsumerWidget {
     // 未登录 → 本地 mock 发布(保持演示)。
     if (ref.read(authProvider).isLoggedIn) {
       try {
-        final remote =
-            await ref.read(projectsApiProvider).create(draft.toCreateJson());
+        // 先把图/视频真上传后端拿 media_ids（best-effort：某张失败跳过，不挡发布）。
+        final mediaIds = await _uploadMedia(ref, draft);
+        final remote = await ref
+            .read(projectsApiProvider)
+            .create(draft.toCreateJson(mediaIds: mediaIds));
         if (!context.mounted) return;
         _addAndFinish(context, ref, remote, '已发布到「看看」');
         return;
@@ -435,6 +439,24 @@ class PublishScreen extends ConsumerWidget {
       createdAtMs: DateTime.now().millisecondsSinceEpoch,
     );
     _addAndFinish(context, ref, project, '已发布: ${project.title}');
+  }
+
+  /// 把草稿里的图/视频真上传后端，返回 media_ids（保持草稿顺序，首张作封面）。
+  /// best-effort：无字节（旧数据）或单张上传失败都跳过，不阻断发布。
+  Future<List<String>> _uploadMedia(WidgetRef ref, PublishDraft draft) async {
+    final notifier = ref.read(publishDraftProvider.notifier);
+    final api = ref.read(mediaApiProvider);
+    final ids = <String>[];
+    for (final m in draft.media) {
+      final bytes = notifier.bytesFor(m.url);
+      if (bytes == null) continue;
+      try {
+        ids.add(await api.upload(bytes));
+      } catch (_) {
+        // 单张上传失败：跳过该张，项目仍发布（少一张图）。
+      }
+    }
+    return ids;
   }
 
   /// 收尾:项目入内存 repo + 刷新依赖屏 + toast + 清草稿 + 返回。

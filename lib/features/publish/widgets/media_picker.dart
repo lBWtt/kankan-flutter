@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -14,7 +16,8 @@ import '../../../domain/models/models.dart';
 /// 显示。Phase 5 接后端上传,产出 URL 后存入 MediaItem.url。
 class MediaPicker extends StatelessWidget {
   final List<MediaItem> current;
-  final void Function(MediaItem) onPicked;
+  /// 选中回调。bytes = 文件真实字节（发布时真上传后端；web 上必须靠它）。
+  final void Function(MediaItem item, Uint8List? bytes) onPicked;
   final void Function(int) onRemoved;
 
   const MediaPicker({
@@ -30,12 +33,12 @@ class MediaPicker extends StatelessWidget {
       if (type == 'image') {
         final files = await picker.pickMultiImage(imageQuality: 85);
         for (final f in files) {
-          // Phase 2:本地路径占位;Phase 5 上传后换 URL
-          onPicked(MediaItem(
-            type: 'image',
-            url: f.path, // 本地路径(Phase 5 换成上传后 URL)
-            alt: '本地图片',
-          ));
+          // url 存 blob/本地路径做预览；bytes 读真字节，发布时真上传后端。
+          final bytes = await f.readAsBytes();
+          onPicked(
+            MediaItem(type: 'image', url: f.path, alt: '本地图片'),
+            bytes,
+          );
         }
       } else {
         final f = await picker.pickVideo(
@@ -43,14 +46,18 @@ class MediaPicker extends StatelessWidget {
           maxDuration: const Duration(minutes: 1),
         );
         if (f != null) {
-          onPicked(MediaItem(
-            type: 'video',
-            url: f.path,
-            // 视频封面 Phase 5 用 ffmpeg 抽帧,Phase 2 留空
-            poster: null,
-            durationSec: 0,
-            alt: '本地视频',
-          ));
+          final bytes = await f.readAsBytes();
+          onPicked(
+            MediaItem(
+              type: 'video',
+              url: f.path,
+              // 视频封面 Phase 5 用 ffmpeg 抽帧,Phase 2 留空
+              poster: null,
+              durationSec: 0,
+              alt: '本地视频',
+            ),
+            bytes,
+          );
         }
       }
     } catch (_) {

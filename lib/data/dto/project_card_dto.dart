@@ -8,7 +8,21 @@
 //   - 卡片无 likes（counts 为 null）→ likes 记 0；author 不展开 → authorId 置空，
 //     调用方在真数据模式下用 showAuthor:false 隐藏作者行。
 //   - resultData 仅填封面 media；actions/io/repo 留空（详情级数据后续接详情端点）。
+import '../../core/config/app_config.dart';
 import '../../domain/models/models.dart';
+
+/// 后端媒体 URL 可能是相对路径（/uploads/xxx.png，local 存储）。相对路径要拼上后端 origin
+/// 才能在浏览器显示（否则被当成前端同源 5599 解析）。绝对 URL（http/https）原样返回。
+String _resolveMediaUrl(String url) {
+  if (url.isEmpty || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // apiBaseUrl = 'http://127.0.0.1:8000/api/v1' → origin = 'http://127.0.0.1:8000'
+  var origin = AppConfig.apiBaseUrl;
+  final apiIdx = origin.indexOf('/api/');
+  if (apiIdx > 0) origin = origin.substring(0, apiIdx);
+  return url.startsWith('/') ? '$origin$url' : '$origin/$url';
+}
 
 /// 后端 category → 前端 domain（成果类型）尽力映射，兜底 'tool'。
 String _mapDomain(String? category) {
@@ -53,13 +67,15 @@ Project projectFromDetailJson(Map<String, dynamic> j) {
   final rawMedia = j['media'];
   final media = <MediaItem>[];
   if (rawMedia is List) {
-    for (final m in rawMedia.whereType<Map>()) {
+    for (final m in rawMedia.whereType<Map<dynamic, dynamic>>()) {
       final url = m['url']?.toString();
       if (url != null && url.isNotEmpty) {
         media.add(MediaItem(
           type: m['type']?.toString() == 'video' ? 'video' : 'image',
-          url: url,
-          poster: m['poster']?.toString(),
+          url: _resolveMediaUrl(url),
+          poster: m['poster'] != null
+              ? _resolveMediaUrl(m['poster'].toString())
+              : null,
         ));
       }
     }
@@ -67,7 +83,7 @@ Project projectFromDetailJson(Map<String, dynamic> j) {
   if (media.isEmpty) {
     final cover = j['cover_media_url'];
     if (cover is String && cover.isNotEmpty) {
-      media.add(MediaItem(type: 'image', url: cover));
+      media.add(MediaItem(type: 'image', url: _resolveMediaUrl(cover)));
     }
   }
   final tools = (j['tools'] is List)
@@ -98,7 +114,7 @@ Project projectFromCardJson(Map<String, dynamic> j) {
   final cover = j['cover_media_url'];
   final media = <MediaItem>[
     if (cover is String && cover.isNotEmpty)
-      MediaItem(type: 'image', url: cover),
+      MediaItem(type: 'image', url: _resolveMediaUrl(cover)),
   ];
   final tools = (j['tools'] is List)
       ? (j['tools'] as List).map((e) => e.toString()).toList()
