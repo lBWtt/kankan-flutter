@@ -28,6 +28,26 @@ class InteractionsApi {
     }
   }
 
+  /// 想看怎么做（主信号，红线：游客可用不设登录墙）。POST → 返回该项目最新累计需求数。
+  /// [anonClientId] 游客必带（后端未登录时缺它 422）；登录用户后端取 token 身份，带上也无妨（登录归并）。
+  /// 后端幂等：重复点按返回当前累计，不重复 +1。
+  Future<int> recordHowToInterest(String projectId, {String? anonClientId}) async {
+    try {
+      final resp = await _dio.post<dynamic>(
+        '/projects/$projectId/how-to-interest',
+        data: {if (anonClientId != null) 'anon_client_id': anonClientId},
+      );
+      final data = resp.data;
+      if (data is Map && data['how_to_interest_count'] != null) {
+        final c = data['how_to_interest_count'];
+        return c is int ? c : int.tryParse('$c') ?? 0;
+      }
+      return 0;
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
   /// 订阅 / 取消订阅实现线索。[on]=true → POST（201）；false → DELETE（204）。
   /// 需登录（后端 auth_required）。
   Future<void> setClueSubscription(String projectId, bool on) async {

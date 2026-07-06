@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/prefs.dart';
 import '../core/utils/backend_id.dart';
 import '../data/api/interactions_api.dart';
 import '../domain/models/models.dart';
@@ -359,25 +360,38 @@ class ClueInteractionNotifier extends Notifier<ClueInteractionState> {
     return ClueInteractionState(howToCounts: Map.of(_mockHowToCounts));
   }
 
-  /// 记一次「想看怎么做」(ZAI_PLAYBOOK Part 4 主信号,游客可用,不设登录墙)。
-  /// 返回最新累计数。mock 模拟 120ms 网络延迟。
+  /// 记一次「想看怎么做」(主信号,红线:游客可用,不设登录墙)。返回最新累计数。
   ///
   /// **幂等**:同一用户对同一项目重复调用不会重复 +1(基于 markedProjectIds)。
-  /// 已标记的项目直接返回当前累计,不再 increment。
+  /// 真后端项目(UUID)→ POST /how-to-interest(游客带 anon_client_id),用返回的真计数覆盖;
+  /// 后端幂等,失败保留乐观本地值(主信号不因网络抖动丢感知)。mock 项目 → 只本地。
   Future<int> recordHowToInterest(String projectId) async {
     // 幂等守卫:已标记过 → 直接返回当前 count,不 increment。
     if (state.hasMarked(projectId)) {
       return state.howToCount(projectId);
     }
-    await Future<void>.delayed(const Duration(milliseconds: 120));
+    // 乐观本地 +1(UI 即时响应)
     final nextCounts = Map<String, int>.from(state.howToCounts);
     nextCounts[projectId] = (nextCounts[projectId] ?? 0) + 1;
     final nextMarked = Set<String>.from(state.markedProjectIds)..add(projectId);
-    state = state.copyWith(
-      howToCounts: nextCounts,
-      markedProjectIds: nextMarked,
-    );
-    return nextCounts[projectId]!;
+    state = state.copyWith(howToCounts: nextCounts, markedProjectIds: nextMarked);
+
+    // 真后端项目 → 落库(游客可用)。用真计数覆盖乐观值。
+    if (looksLikeBackendId(projectId)) {
+      try {
+        final real = await ref.read(interactionsApiProvider).recordHowToInterest(
+              projectId,
+              anonClientId: ref.read(anonClientIdProvider),
+            );
+        final c = Map<String, int>.from(state.howToCounts);
+        c[projectId] = real;
+        state = state.copyWith(howToCounts: c);
+        return real;
+      } catch (_) {
+        // 落库失败:保留乐观本地值,不回滚(已标记幂等,后端下次也不会重复计)。
+      }
+    }
+    return state.howToCount(projectId);
   }
 
   /// 切换订阅(ZAI_PLAYBOOK Part 4 订阅区)。乐观切换本地态;

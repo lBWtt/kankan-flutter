@@ -70,7 +70,12 @@ class AuthNotifier extends Notifier<AuthState> {
   /// 验证码登录：成功后把令牌写进 tokenStore、当前用户写进 state + 持久化。
   /// 失败（验证码错等）抛异常给 UI。
   Future<void> login(String identifier, String code) async {
-    final result = await ref.read(authApiProvider).login(identifier, code);
+    // 带上游客 ID：后端把登录前游客的「想看怎么做」记录归并进账号（主信号不丢，红线）。
+    final result = await ref.read(authApiProvider).login(
+          identifier,
+          code,
+          anonClientId: ref.read(anonClientIdProvider),
+        );
     ref.read(tokenStoreProvider).set(
           access: result.accessToken,
           refresh: result.refreshToken,
