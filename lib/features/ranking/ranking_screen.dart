@@ -7,9 +7,11 @@ import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/parse_count.dart';
 import '../../core/utils/time_ago.dart';
+import '../../core/config/app_config.dart';
 import '../../core/widgets/skeletons.dart';
 import '../../core/widgets/kk_back_button.dart';
 import '../../core/widgets/tappable.dart';
+import '../../data/api/rankings_api.dart';
 import '../../data/seed/mock_seed.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
@@ -320,7 +322,23 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
 class _ProjectRankingList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 真数据模式:项目榜读 GET /rankings?type=weekly_hot(埋点→hot_score→真热度)。
+    // 动态榜/作者榜后端暂无(Post/关注是阶段3),仍走 mock。
+    if (AppConfig.useRemote) {
+      final async = ref.watch(remoteWeeklyHotProvider);
+      return async.when(
+        loading: () => const _RankingLoading(),
+        error: (e, _) => _RankingError(
+          onRetry: () => ref.invalidate(remoteWeeklyHotProvider),
+        ),
+        data: (list) => _list(context, list, remote: true),
+      );
+    }
     final list = ref.watch(projectRepositoryProvider).sorted('hot');
+    return _list(context, list, remote: false);
+  }
+
+  Widget _list(BuildContext context, List<Project> list, {required bool remote}) {
     if (list.isEmpty) {
       return ListView(
         children: const [EmptyState(variant: EmptyStateVariant.generic)],
@@ -336,7 +354,8 @@ class _ProjectRankingList extends ConsumerWidget {
         final project = list[i];
         return _RankRow(
           rank: i + 1,
-          rankChange: mockProjectRankChange(project.id),
+          // 名次升降是 mock 演示数据;真数据没有历史名次,置 0(不显升降)。
+          rankChange: remote ? 0 : mockProjectRankChange(project.id),
           // 信息密度:榜单用 compact 细行(56 缩略图 + 标题 + 计数),不用 180 大封面全卡,
           // 一屏能看更多名次。
           child: ProjectCard(project: project, compact: true),
@@ -344,6 +363,56 @@ class _ProjectRankingList extends ConsumerWidget {
       },
     );
   }
+}
+
+// 真榜加载/错误态(项目榜远程模式用)。
+class _RankingLoading extends StatelessWidget {
+  const _RankingLoading();
+  @override
+  Widget build(BuildContext context) => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(KkSpacing.xxl),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation(KkColors.teal),
+          ),
+        ),
+      );
+}
+
+class _RankingError extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _RankingError({required this.onRetry});
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 40, color: KkColors.t3),
+            const SizedBox(height: KkSpacing.md),
+            Text('榜单加载失败',
+                style: KkType.bodySm.copyWith(color: KkColors.t3)),
+            const SizedBox(height: KkSpacing.md),
+            Tappable(
+              onTap: onRetry,
+              borderRadius: BorderRadius.circular(KkRadius.pill),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: KkSpacing.lg, vertical: KkSpacing.sm),
+                decoration: BoxDecoration(
+                  color: KkColors.teal,
+                  borderRadius: BorderRadius.circular(KkRadius.pill),
+                ),
+                child: const Text('重试',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 // ──────────────────────────────────────────────────────────────────
