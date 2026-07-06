@@ -215,7 +215,7 @@ class _RecommendFeed extends ConsumerWidget {
       onRefresh: () async {
         ref.invalidate(postRepositoryProvider);
         ref.invalidate(searchRepositoryProvider);
-        await Future.delayed(const Duration(milliseconds: 400));
+        await Future<void>.delayed(const Duration(milliseconds: 400));
       },
       child: list,
     );
@@ -391,7 +391,7 @@ class _FollowingFeed extends ConsumerWidget {
         color: KkColors.teal,
         onRefresh: () async {
           ref.invalidate(postRepositoryProvider);
-          await Future.delayed(const Duration(milliseconds: 400));
+          await Future<void>.delayed(const Duration(milliseconds: 400));
         },
         child: ListView(
           children: const [EmptyState(variant: EmptyStateVariant.feed)],
@@ -403,7 +403,7 @@ class _FollowingFeed extends ConsumerWidget {
       color: KkColors.teal,
       onRefresh: () async {
         ref.invalidate(postRepositoryProvider);
-        await Future.delayed(const Duration(milliseconds: 400));
+        await Future<void>.delayed(const Duration(milliseconds: 400));
       },
       child: ListView.builder(
         padding: const EdgeInsets.only(bottom: KkSpacing.xxl),

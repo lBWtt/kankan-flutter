@@ -258,7 +258,7 @@ class _ProjectList extends ConsumerWidget {
       onRefresh: () async {
         // mock:重建无害,invalidate projectRepositoryProvider 让 watch 重建。
         ref.invalidate(projectRepositoryProvider);
-        await Future.delayed(const Duration(milliseconds: 400));
+        await Future<void>.delayed(const Duration(milliseconds: 400));
       },
       child: _mockList(context, ref),
     );
