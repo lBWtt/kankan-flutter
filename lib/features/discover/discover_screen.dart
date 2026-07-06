@@ -257,7 +257,7 @@ class _TodayTopicStrip extends StatelessWidget {
           _header(context),
           const SizedBox(height: KkSpacing.sm),
           SizedBox(
-            // KkChip 外层 Tappable 强制 ≥44pt,横列表高度跟齐
+            // 横列表高度跟齐 Tappable 的 minSize 44
             height: 44,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -267,9 +267,21 @@ class _TodayTopicStrip extends StatelessWidget {
                   const SizedBox(width: KkSpacing.sm),
               itemBuilder: (context, i) {
                 final t = topics[i];
-                return KkChip.solid(
-                  label: '#${t.tag}',
+                // 修 bug:原来直接用 KkChip.solid(onTap:),其内部
+                // Material(transparent)>InkWell 在横向 ListView 的 Scrollable
+                // 里,InkWell 的 TapGestureRecognizer 与 HorizontalDragGestureRecognizer
+                // 竞争,Flutter web(mouse)下鼠标 down→亚像素移动即被判 drag,
+                // tap 被 cancel → 点击无反应;且 KkChip 内 InkWell 无 minSize 约束,
+                // 实际触控区 ~29px < 44pt 铁律。
+                // 修复:外层用项目验证过的 Tappable(translucent 命中 + ConstrainedBox
+                // min44 + InkWell),KkChip.solid 不传 onTap(纯视觉,内部不套 InkWell)。
+                // Tappable 在横向 ListView item 里宽度 unbounded 但 Center 不撑满
+                // (不同于 Wrap 的 bounded→expand 阶梯 bug),触控区稳 44pt,点击稳。
+                // 不改 KkChip 本身 — 保护 me 页 Wrap 场景仍走 InkWell 自适应布局。
+                return Tappable(
                   onTap: () => context.push(KkRoutes.topic(t.tag)),
+                  borderRadius: BorderRadius.circular(KkRadius.pill),
+                  child: KkChip.solid(label: '#${t.tag}'),
                 );
               },
             ),
