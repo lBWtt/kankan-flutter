@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/api/interactions_api.dart';
 import '../data/seed/mock_seed.dart';
 import '../domain/models/models.dart';
+import 'auth_provider.dart';
 
 /// 全局 AppState — 替代 Web 版 Zustand store。
 ///
@@ -234,10 +236,38 @@ class AppStateNotifier extends Notifier<AppStateData> {
       state.savedProjectIds.contains(projectId);
 
   void toggleSave(String projectId) {
+    final wasSaved = state.savedProjectIds.contains(projectId);
     final next = Set<String>.from(state.savedProjectIds);
-    if (!next.add(projectId)) next.remove(projectId);
-    state = state.copyWith(savedProjectIds: next);
+    if (wasSaved) {
+      next.remove(projectId);
+    } else {
+      next.add(projectId);
+    }
+    state = state.copyWith(savedProjectIds: next); // 乐观更新，UI 立即响应
+    _syncFavorite(projectId, on: !wasSaved); // 后端同步（仅登录 + 真后端项目）
   }
+
+  /// 收藏落库：登录 + 真后端项目（UUID）才发请求；失败回滚本地，保持与后端一致。
+  /// mock 项目（短 id 如 'p1'）本地即真源，不碰后端（发了也会 404）。
+  Future<void> _syncFavorite(String projectId, {required bool on}) async {
+    if (!ref.read(authProvider).isLoggedIn) return;
+    if (!_looksLikeBackendId(projectId)) return;
+    try {
+      await ref.read(interactionsApiProvider).setFavorite(projectId, on);
+    } catch (_) {
+      // 落库失败：撤回乐观更新（此刻 state 可能已被其它操作改动，按幂等增删处理）
+      final revert = Set<String>.from(state.savedProjectIds);
+      if (on) {
+        revert.remove(projectId);
+      } else {
+        revert.add(projectId);
+      }
+      state = state.copyWith(savedProjectIds: revert);
+    }
+  }
+
+  /// 粗判是否后端项目 id（UUID：含 '-' 且长度 ≥ 32）。mock id 是 'p1'/'p2' 这类短串。
+  bool _looksLikeBackendId(String id) => id.contains('-') && id.length >= 32;
 
   // ── 关注 ──
   bool isFollowing(String userId) =>
