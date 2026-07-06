@@ -35,6 +35,7 @@ Future<void> showShareSheet(
   String? subtitle,
   String? authorName,
   String? coverPattern,
+  String? coverImageUrl,
   int? likes,
 }) {
   return showModalBottomSheet<void>(
@@ -54,6 +55,7 @@ Future<void> showShareSheet(
       subtitle: subtitle,
       authorName: authorName,
       coverPattern: coverPattern,
+      coverImageUrl: coverImageUrl,
       likes: likes,
     ),
   );
@@ -79,6 +81,10 @@ class ShareSheet extends ConsumerStatefulWidget {
   /// null 则根据 shareType 默认
   final String? coverPattern;
 
+  /// 真实封面图 URL(项目/动态传作品封面)。非空 → 海报顶部铺真图(每个作品不一样),
+  /// 图案切换器隐藏;空(话题/主页无单一封面)→ 退回抽象图案。
+  final String? coverImageUrl;
+
   /// 点赞数(真实,可选)
   final int? likes;
 
@@ -90,6 +96,7 @@ class ShareSheet extends ConsumerStatefulWidget {
     this.subtitle,
     this.authorName,
     this.coverPattern,
+    this.coverImageUrl,
     this.likes,
   });
 
@@ -100,6 +107,10 @@ class ShareSheet extends ConsumerStatefulWidget {
 class _ShareSheetState extends ConsumerState<ShareSheet> {
   /// 当前选中图案
   late String _pattern;
+
+  /// 有真封面图可用(项目/动态);有则海报铺真图、隐藏图案切换器。
+  bool get _hasCover =>
+      widget.coverImageUrl != null && widget.coverImageUrl!.isNotEmpty;
 
   /// 海报 RepaintBoundary key(用于 toImage 截图,Phase 5 接 gallery_saver)
   final GlobalKey _boundaryKey = GlobalKey();
@@ -178,9 +189,11 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
           // Section 1:海报预览(核心)
           _posterPreview(),
           const SizedBox(height: KkSpacing.lg),
-          // Section 2:图案切换
-          _patternChips(),
-          const SizedBox(height: KkSpacing.lg),
+          // Section 2:图案切换(仅无真封面时显示——有真图不需要选抽象图案)
+          if (!_hasCover) ...[
+            _patternChips(),
+            const SizedBox(height: KkSpacing.lg),
+          ],
           // Section 3:分享渠道
           _shareChannels(),
           // Section 4:底部留白
@@ -236,13 +249,20 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 顶部图案背景(占海报上半 40% = 144 高)
+              // 顶部背景(占海报上半 40% = 144 高):有真封面铺真图(每个作品不一样),
+              // 加载中/坏链回退抽象图案;无封面(话题/主页)用抽象图案。
               SizedBox(
                 height: 144,
-                child: CustomPaint(
-                  painter: _patternPainter(_pattern),
-                  size: Size.infinite,
-                ),
+                width: double.infinity,
+                child: _hasCover
+                    ? Image.network(
+                        widget.coverImageUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (ctx, child, progress) =>
+                            progress == null ? child : _patternBg(),
+                        errorBuilder: (_, __, ___) => _patternBg(),
+                      )
+                    : _patternBg(),
               ),
               // 内容区
               Expanded(
@@ -364,6 +384,12 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       ),
     );
   }
+
+  /// 抽象图案背景(无真封面 / 真封面加载中或坏链时用)。
+  Widget _patternBg() => CustomPaint(
+        painter: _patternPainter(_pattern),
+        size: Size.infinite,
+      );
 
   CustomPainter _patternPainter(String pattern) {
     switch (pattern) {

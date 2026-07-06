@@ -251,6 +251,14 @@ class PostDetailScreen extends ConsumerWidget {
                 onTap: () {
                   final author =
                       ref.read(userByIdProvider(post.authorId));
+                  // 动态有配图 → 用第一张做海报背景(image→url,video→poster)。
+                  final firstMedia =
+                      post.media.isNotEmpty ? post.media.first : null;
+                  final cover = firstMedia == null
+                      ? null
+                      : (firstMedia.type == 'image'
+                          ? firstMedia.url
+                          : firstMedia.poster);
                   showShareSheet(
                     context,
                     title: post.content.split('\n').first,
@@ -259,6 +267,7 @@ class PostDetailScreen extends ConsumerWidget {
                     shareType: 'post',
                     shareUrl: 'https://kankan.app/post/${post.id}',
                     coverPattern: 'waves',
+                    coverImageUrl: cover,
                     likes: post.likes,
                   );
                 },

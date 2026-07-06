@@ -34,6 +34,17 @@ import '../shared/share_sheet.dart';
 ///
 /// 作者的话为空 → 整块隐藏(连标题)。
 /// 无任何动作 → 动作区整块不显示。
+/// 取项目封面图 URL(image→url,video→poster,无→null)。分享海报背景用。
+/// 与 _DetailCover / ProjectCard._Cover 同源。
+String? _coverImageUrl(Project project) {
+  final media = project.resultData.media;
+  if (media.isEmpty) return null;
+  final first = media.first;
+  if (first.type == 'image') return first.url;
+  if (first.type == 'video') return first.poster;
+  return null;
+}
+
 class DetailScreen extends ConsumerStatefulWidget {
   final String projectId;
 
@@ -196,6 +207,8 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
               shareType: 'project',
               shareUrl: 'https://kankan.app/project/${project.id}',
               coverPattern: 'mountains',
+              // 用作品真封面做海报背景(每个项目不一样,不再是那几个抽象图案)。
+              coverImageUrl: _coverImageUrl(project),
               likes: project.likes,
             );
           },
