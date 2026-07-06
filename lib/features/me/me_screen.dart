@@ -13,6 +13,7 @@ import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../providers/app_state_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
 import '../shared/kk_chip.dart';
@@ -45,16 +46,24 @@ class MeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final me = ref.watch(userByIdProvider('me'));
+    final mockMe = ref.watch(userByIdProvider('me'));
+    final auth = ref.watch(authProvider);
     final projectRepo = ref.watch(projectRepositoryProvider);
     final postRepo = ref.watch(postRepositoryProvider);
     final appState = ref.watch(appStateProvider);
 
-    // 真实统计(禁编造)
+    // 身份覆盖:登录后头像/名字/简介用真后端账号;未登录用 mock 'me' 演示画像。
+    // 统计与下方内容(贡献/领域/话题/最近看过)仍是 mock 演示数据——真·个人数据待接
+    // /me + /me/projects 等端点(同 feed remote 的已知分叉)。故计数一律从 mockMe 派生,
+    // 保持演示画像自洽。
+    final me = auth.currentUser ?? mockMe;
+    final isLoggedIn = auth.isLoggedIn;
+
+    // 真实统计(禁编造;演示口径取 mock 'me')
     final myProjects = projectRepo.byAuthor('me');
     final myPosts = postRepo.byAuthor('me');
-    final followingCount = (me?.followingIds ?? const <String>[]).length;
-    final followerCount = (me?.followerIds ?? const <String>[]).length;
+    final followingCount = (mockMe?.followingIds ?? const <String>[]).length;
+    final followerCount = (mockMe?.followerIds ?? const <String>[]).length;
     final totalLikes = myProjects.fold<int>(0, (s, p) => s + p.likes) +
         myPosts.fold<int>(0, (s, p) => s + p.likes);
     final savedCount = appState.savedProjectIds.length;
@@ -97,11 +106,14 @@ class MeScreen extends ConsumerWidget {
               onTap: () => context.push(KkRoutes.settings),
             ),
           ],
+          // 未登录 → 「登录/注册」入口(点进 /login 拿真 JWT);登录后 → 「编辑资料」。
           nameTrailing: Tappable(
-            onTap: () => context.push(KkRoutes.profileEdit),
+            onTap: () => context.push(
+              isLoggedIn ? KkRoutes.profileEdit : KkRoutes.login,
+            ),
             borderRadius: BorderRadius.circular(KkRadius.sm),
             child: Text(
-              '编辑资料',
+              isLoggedIn ? '编辑资料' : '登录 / 注册',
               style: KkType.bodySm.copyWith(color: KkColors.teal),
             ),
           ),

@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 
-/// 通用头像组件 — 用户名首字母 fallback(HANDOFF §5:无 emoji)。
+/// 通用头像组件 — 有 avatar URL 则渲染网络图,否则用户名首字母 fallback(HANDOFF §5:无 emoji)。
 ///
 /// 用法:
 ///   KkAvatar(userId: 'chen', size: 36)
 ///   KkAvatar(user: user, size: 44)
 ///
-/// Phase 5 接真头像 URL 时,加 CachedNetworkImage 即可,接口不变。
+/// 登录后真账号的 avatar_url 走 Image.network(加载中/坏链自动回退首字母)。
 class KkAvatar extends StatelessWidget {
   final String? userId;
   final KkUser? user;
@@ -28,7 +28,7 @@ class KkAvatar extends StatelessWidget {
     final bg = HSLColor.fromAHSL(1, hue, 0.3, 0.85).toColor();
     final fg = HSLColor.fromAHSL(1, hue, 0.5, 0.35).toColor();
 
-    return Container(
+    final letterFallback = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
@@ -45,6 +45,20 @@ class KkAvatar extends StatelessWidget {
           fontSize: size * 0.4,
           fontFamily: 'JetBrainsMono',
         ),
+      ),
+    );
+
+    final avatarUrl = u?.avatar;
+    if (avatarUrl == null || avatarUrl.isEmpty) return letterFallback;
+    return ClipOval(
+      child: Image.network(
+        avatarUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        loadingBuilder: (ctx, child, progress) =>
+            progress == null ? child : letterFallback,
+        errorBuilder: (_, __, ___) => letterFallback,
       ),
     );
   }
