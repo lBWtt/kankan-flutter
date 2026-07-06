@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/widgets/kk_tab_bar.dart';
 import '../features/activity/activity_screen.dart';
+import '../features/auth/login_screen.dart';
 import '../features/comments/comments_screen.dart';
 import '../features/clue/implementation_clue_screen.dart';
 import '../features/detail/detail_screen.dart';
@@ -234,6 +235,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: const SettingsScreen(),
+        ),
+      ),
+
+      // 登录 / 注册(拿真 JWT 解锁写操作;设置「账号」区 / 「我的」页入口)
+      GoRoute(
+        path: KkRoutes.login,
+        pageBuilder: (context, state) => _kkPage(
+          context: context,
+          state: state,
+          child: const LoginScreen(),
         ),
       ),
 

@@ -7,6 +7,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/kk_back_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../providers/app_state_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../router/routes.dart';
 
 /// 设置页 — HANDOFF §6.10 真实计数 + §3 零旁白 + §5 触控铁律。
@@ -113,6 +114,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
           children: [
             _topBar(context),
+            const SizedBox(height: KkSpacing.lg),
+            _sectionAccount(),
             const SizedBox(height: KkSpacing.lg),
             _sectionNotifications(unreadCount),
             const SizedBox(height: KkSpacing.lg),
@@ -284,6 +287,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  // ── Section 0: 账号(登录态真接后端)──
+  // 未登录:一行「登录 / 注册」→ /login。
+  // 已登录:显示昵称 + 「退出登录」(清真令牌，回游客态)。
+  Widget _sectionAccount() {
+    final auth = ref.watch(authProvider);
+    if (!auth.isLoggedIn) {
+      return _card(
+        children: [
+          _menuRow(
+            icon: Icons.login_outlined,
+            label: '登录 / 注册',
+            onTap: () => context.push(KkRoutes.login),
+          ),
+        ],
+      );
+    }
+    return _card(
+      children: [
+        _staticRow(
+          icon: Icons.account_circle_outlined,
+          label: '当前账号',
+          trailing: auth.currentUser!.name,
+        ),
+        _divider(),
+        _menuRow(
+          icon: Icons.logout_outlined,
+          label: '退出登录',
+          onTap: _confirmLogout,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('退出登录'),
+        content: const Text('确定退出当前账号？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('取消', style: const TextStyle(color: KkColors.t3)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('确定', style: const TextStyle(color: KkColors.teal)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      ref.read(authProvider.notifier).logout();
+      _toast('已退出登录');
+    }
   }
 
   // ── Section 1: 通知 ──

@@ -86,4 +86,8 @@ class KkRoutes {
   /// 设置页 — me 屏设置图标入口
   /// 通知 / 外观 / 主题 / 清缓存(显示真实字节数)
   static const settings = '/settings';
+
+  /// 登录 / 注册 — 手机号或邮箱验证码登录（未注册自动注册）。
+  /// 「我的」页点头像/「点击登录」或设置页「账号」区进入；拿真 JWT 解锁写操作。
+  static const login = '/login';
 }
