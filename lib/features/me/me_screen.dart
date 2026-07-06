@@ -122,6 +122,9 @@ class MeScreen extends ConsumerWidget {
         // 5. 我的贡献卡(整卡 → activity)
         _contributionCard(context),
         const SizedBox(height: KkSpacing.xl),
+        // 我发布的(横向小卡,空态零旁白)
+        _myPostsSection(context, ref),
+        const SizedBox(height: KkSpacing.xl),
         // 6. 我关注的领域
         _followedDomainsSection(context),
         const SizedBox(height: KkSpacing.xl),
@@ -191,6 +194,71 @@ class MeScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // 我发布的(横向小卡,空态零旁白,查看全部 → 个人主页项目 tab)
+  // ──────────────────────────────────────────────────────────────────
+  // 项目用 projectRepo.byAuthor('me'),复用「最近看过」小卡视觉(_recentProjectCard)。
+  // 真实计数,禁编造。空态:「还没有发布」(零旁白,不写"快去发布"引导)。
+  Widget _myPostsSection(BuildContext context, WidgetRef ref) {
+    final projectRepo = ref.watch(projectRepositoryProvider);
+    final myProjects = projectRepo.byAuthor('me');
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('我发布的', style: KkType.h3),
+              const Spacer(),
+              if (myProjects.isNotEmpty)
+                Tappable(
+                  onTap: () => context.push(KkRoutes.profile('me')),
+                  borderRadius: BorderRadius.circular(KkRadius.sm),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: KkSpacing.sm,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '查看全部',
+                          style: KkType.bodySm.copyWith(color: KkColors.t3),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.chevron_right,
+                            size: 16, color: KkColors.t3),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: KkSpacing.md),
+          if (myProjects.isEmpty)
+            Text(
+              '还没有发布',
+              style: KkType.bodySm.copyWith(color: KkColors.t3),
+            )
+          else
+            SizedBox(
+              height: 132,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(right: KkSpacing.lg),
+                itemCount: myProjects.length,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(width: KkSpacing.md),
+                itemBuilder: (ctx, i) => _recentProjectCard(ctx, myProjects[i]),
+              ),
+            ),
+        ],
       ),
     );
   }

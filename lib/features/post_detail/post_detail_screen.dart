@@ -295,10 +295,12 @@ class PostDetailScreen extends ConsumerWidget {
     );
   }
 
-  // ── 更多操作 sheet(举报 / 不感兴趣)— HANDOFF §5:t1 文字,非珊瑚橙 ──
+  // ── 更多操作 sheet(举报 / 不感兴趣 / 删除自己的)— HANDOFF §5:t1 文字,非珊瑚橙 ──
   // 任务⑫:举报 → showReportSheet(post);不感兴趣 → markNotInterested +
   // toast「已减少类似推荐」+ 回 feed(该动态从流过滤消失)。
+  // 任务:own(authorId=='me')出「删除」(珊瑚橙,删自己内容=take 语义例外)。
   void _showMoreSheet(BuildContext context, WidgetRef ref, Post post) {
+    final isMe = post.authorId == 'me';
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: KkColors.bgCard,
@@ -306,6 +308,20 @@ class PostDetailScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // 自己的动态 → 删除(coral,置顶,destructive)
+            if (isMe) ...[
+              _sheetItem(
+                icon: Icons.delete_outline,
+                label: '删除',
+                color: KkColors.coral,
+                weight: FontWeight.w600,
+                onTap: () {
+                  Navigator.pop(context); // 关 more sheet
+                  _confirmDeletePost(context, ref, post);
+                },
+              ),
+              const Divider(height: 1, color: KkColors.divider, indent: 56),
+            ],
             _sheetItem(
               icon: Icons.flag_outlined,
               label: '举报',
@@ -351,6 +367,54 @@ class PostDetailScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ── 任务:删除自己的动态(二次确认 → removePost + invalidate + pop)──
+  // 零旁白:AlertDialog 只列「删除这条动态?」+ 删除/取消,不写后果说明。
+  // 删除按钮 coral(删自己内容 = take 语义例外,与评论删除一致,SPEC §6)。
+  void _confirmDeletePost(BuildContext context, WidgetRef ref, Post post) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: const Text('删除这条动态?'),
+        contentTextStyle: KkType.body.copyWith(color: KkColors.t1),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: KkSpacing.md,
+          vertical: KkSpacing.sm,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              '取消',
+              style: KkType.bodySm.copyWith(color: KkColors.t2),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(postRepositoryProvider).removePost(post.id);
+              // 刷新依赖 postRepositoryProvider 的屏
+              // (discover 推荐/关注/profile 动态 重建后该动态消失)。
+              ref.invalidate(postRepositoryProvider);
+              // 删除后在动态详情页 → pop 回上一页。
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(KkRoutes.discover);
+              }
+            },
+            child: Text(
+              '删除',
+              style: KkType.bodySm.copyWith(
+                color: KkColors.coral,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

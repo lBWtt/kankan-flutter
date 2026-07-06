@@ -81,6 +81,13 @@ class ProjectRepository {
     _projects.insert(0, project);
   }
 
+  /// 删除自己发布的项目(对称 add)。详情页/我的页 own 二次确认后调用,
+  /// 同步 mockProjects。真·后端 DELETE /projects/{id} 由 Claude 后续接,
+  /// 这里先 mock 层(内存 repo 删除)。返回是否删除成功(项目存在才删)。
+  void removeProject(String projectId) {
+    _projects.removeWhere((p) => p.id == projectId);
+  }
+
   /// F-4:写入评论到内存 mockComments(与 PostRepository 同源)。
   /// detail 底栏 / 卡片 / CommentThread 读同一份,计数一致。
   /// hostType/hostId 透传仅作文档;Comment 自身已带这两个字段。

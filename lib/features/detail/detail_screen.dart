@@ -215,8 +215,66 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
           child: const Icon(Icons.ios_share_outlined,
               color: KkColors.t1, size: 22),
         ),
-        const SizedBox(width: KkSpacing.sm),
+        // 任务:own(authorId=='me')出删除入口(珊瑚橙,删自己内容=take 语义例外,SPEC §6)
+        if (project.authorId == 'me') ...[
+          Tappable(
+            onTap: () => _confirmDeleteProject(context, ref, project),
+            child: const Icon(Icons.delete_outline,
+                color: KkColors.coral, size: 22),
+          ),
+          const SizedBox(width: KkSpacing.sm),
+        ] else
+          const SizedBox(width: KkSpacing.sm),
       ],
+    );
+  }
+
+  // ── 任务:删除自己的项目(二次确认 → removeProject + invalidate + pop)──
+  // 零旁白:AlertDialog 只列「删除这个项目?」+ 删除/取消,不写后果说明。
+  // 删除按钮 coral(删自己内容 = take 语义例外,与评论删除一致,SPEC §6)。
+  void _confirmDeleteProject(
+      BuildContext context, WidgetRef ref, Project project) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: const Text('删除这个项目?'),
+        contentTextStyle: KkType.body.copyWith(color: KkColors.t1),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: KkSpacing.md,
+          vertical: KkSpacing.sm,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              '取消',
+              style: KkType.bodySm.copyWith(color: KkColors.t2),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(projectRepositoryProvider).removeProject(project.id);
+              // 刷新依赖 projectRepositoryProvider / projectByIdProvider 的屏
+              // (discover/kankan/profile/me 重建后该项目消失)。
+              ref.invalidate(projectByIdProvider(project.id));
+              // 删除后在详情页 → pop 回上一页。
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(KkRoutes.discover);
+              }
+            },
+            child: Text(
+              '删除',
+              style: KkType.bodySm.copyWith(
+                color: KkColors.coral,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

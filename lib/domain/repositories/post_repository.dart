@@ -38,6 +38,13 @@ class PostRepository {
     _posts.insert(0, post);
   }
 
+  /// 删除自己发布的动态(对称 addPost)。动态详情页 own 二次确认后调用,
+  /// 同步 mockPosts。真·后端 DELETE /posts/{id} 由 Claude 后续接,
+  /// 这里先 mock 层(内存 repo 删除)。
+  void removePost(String postId) {
+    _posts.removeWhere((p) => p.id == postId);
+  }
+
   /// 任务⑨:删除评论(对称 addComment,与 ProjectRepository 同源 mockComments)。
   void removeComment(String commentId) {
     _comments.removeWhere((c) => c.id == commentId);
