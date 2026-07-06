@@ -24,6 +24,9 @@ dependencies:
   # ── 后端接入:HTTP client(看看 feed 等真数据,--dart-define=USE_REMOTE=true 启用)──
   dio: ^5.4.0
 
+  # ── 会话持久化:登录令牌(web 刷新不掉登录)。web=localStorage,移动=SharedPreferences ──
+  shared_preferences: ^2.3.0
+
   # ── 声明式动画 ──
   flutter_animate: ^4.0.0
 

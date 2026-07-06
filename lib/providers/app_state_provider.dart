@@ -206,6 +206,11 @@ class AppStateNotifier extends Notifier<AppStateData> {
         _dropBackendFavorites();
       }
     });
+    // 恢复的登录态（web 刷新后 auth 从 prefs 恢复）：ref.listen 不会为初始值触发，
+    // 这里主动拉一次后端收藏，让收藏心亮回来。
+    if (ref.read(authProvider).isLoggedIn) {
+      _loadFavoritesFromBackend();
+    }
     return AppStateData.initial();
   }
 

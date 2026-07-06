@@ -3,9 +3,12 @@
 // 如果它出错了：登录后 UI 不刷新，或登出后仍显示旧身份。
 //
 // 令牌本身存在 tokenStore（无依赖、拦截器直接读）；这里只管 UI 关心的用户对象与状态。
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/prefs.dart';
 import '../data/api/auth_api.dart';
 import '../data/token_store.dart';
 import '../domain/models/models.dart';
@@ -32,13 +35,39 @@ class AuthState {
 
 class AuthNotifier extends Notifier<AuthState> {
   @override
-  AuthState build() => const AuthState();
+  AuthState build() => _restore();
+
+  /// 启动恢复登录态：tokenStore 已从 prefs 载回令牌；再读持久化的用户 JSON。
+  /// 有令牌但无用户 JSON（异常残留）→ 清令牌保持一致，回游客态。
+  AuthState _restore() {
+    final store = ref.read(tokenStoreProvider);
+    if (!store.isLoggedIn) return const AuthState();
+    final raw = ref.read(prefsProvider).getString(PrefsKeys.authUser);
+    if (raw == null || raw.isEmpty) {
+      store.clear();
+      return const AuthState();
+    }
+    try {
+      final j = jsonDecode(raw) as Map<String, dynamic>;
+      return AuthState(
+        currentUser: KkUser(
+          id: j['id'].toString(),
+          name: (j['name'] ?? j['id']).toString(),
+          avatar: j['avatar'] as String?,
+          bio: j['bio'] as String?,
+        ),
+      );
+    } catch (_) {
+      store.clear();
+      return const AuthState();
+    }
+  }
 
   /// 发送验证码。异常（频控 429 等）原样抛给 UI 提示。
   Future<void> sendCode(String identifier) =>
       ref.read(authApiProvider).sendCode(identifier);
 
-  /// 验证码登录：成功后把令牌写进 tokenStore、当前用户写进 state。
+  /// 验证码登录：成功后把令牌写进 tokenStore、当前用户写进 state + 持久化。
   /// 失败（验证码错等）抛异常给 UI。
   Future<void> login(String identifier, String code) async {
     final result = await ref.read(authApiProvider).login(identifier, code);
@@ -46,13 +75,28 @@ class AuthNotifier extends Notifier<AuthState> {
           access: result.accessToken,
           refresh: result.refreshToken,
         );
+    _persistUser(result.user);
     state = AuthState(currentUser: result.user, isNewUser: result.isNewUser);
   }
 
-  /// 登出：清令牌 + 清用户。回到游客态。
+  /// 登出：清令牌 + 清持久化用户 + 清 state。回到游客态。
   void logout() {
     ref.read(tokenStoreProvider).clear();
+    ref.read(prefsProvider).remove(PrefsKeys.authUser);
     state = const AuthState();
+  }
+
+  /// 把当前用户的最小信息持久化（刷新页面后恢复 UI 显示用）。
+  void _persistUser(KkUser user) {
+    ref.read(prefsProvider).setString(
+          PrefsKeys.authUser,
+          jsonEncode({
+            'id': user.id,
+            'name': user.name,
+            'avatar': user.avatar,
+            'bio': user.bio,
+          }),
+        );
   }
 }
 
