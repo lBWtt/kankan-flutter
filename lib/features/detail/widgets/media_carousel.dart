@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:photo_view/photo_view.dart';
-import 'package:photo_view/photo_view_gallery.dart';
 
 import '../../../core/theme/kk_colors.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/tappable.dart';
 import '../../../domain/models/models.dart';
+import '../../shared/image_lightbox.dart';
 import 'video_block.dart';
 
 /// 成果区 media 渲染器 — HANDOFF §2.1。
@@ -135,59 +134,11 @@ class _MediaCarouselState extends State<MediaCarousel> {
   }
 
   void _openLightbox(int index) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _Lightbox(
-          images: _images,
-          initialIndex: index,
-        ),
-        fullscreenDialog: true,
-      ),
-    );
-  }
-}
-
-/// 全屏 lightbox(PhotoView 支持缩放)
-class _Lightbox extends StatelessWidget {
-  final List<MediaItem> images;
-  final int initialIndex;
-
-  const _Lightbox({required this.images, required this.initialIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            PhotoViewGallery.builder(
-              itemCount: images.length,
-              pageController: PageController(initialPage: initialIndex),
-              backgroundDecoration: const BoxDecoration(color: Colors.black),
-              builder: (context, index) {
-                return PhotoViewGalleryPageOptions(
-                  imageProvider: NetworkImage(images[index].url),
-                  minScale: PhotoViewComputedScale.contained,
-                  maxScale: PhotoViewComputedScale.covered * 2,
-                );
-              },
-            ),
-            // 关闭按钮
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Tappable(
-                onTap: () => Navigator.pop(context),
-                child: const Padding(
-                  padding: EdgeInsets.all(KkSpacing.md),
-                  child: Icon(Icons.close, color: Colors.white, size: 24),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    // 任务 A:改用共享 openImageLightbox(收 List<String> url)。
+    openImageLightbox(
+      context,
+      urls: [for (final m in _images) m.url],
+      initialIndex: index,
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/parse_count.dart';
+import '../../core/utils/image_download.dart';
 import '../../core/widgets/tappable.dart';
 
 /// 分享浮层 — 生成可截图海报 + 渲染分享渠道。
@@ -160,15 +162,47 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     );
   }
 
-  // ── 真截图占位:Phase 5 接 share_plus / gallery_saver ──
-  // Future<void> _saveImage() async {
-  //   final boundary = _boundaryKey.currentContext?.findRenderObject()
-  //       as RenderRepaintBoundary?;
-  //   if (boundary == null) return;
-  //   final image = await boundary.toImage(pixelRatio: 3.0);
-  //   final byteData = await image.toByteData(format: ImageByteFormat.png);
-  //   // → 写入相册(gallery_saver) / 分享 (share_plus)
-  // }
+  // ── 任务 B:「保存图片」做真(web)— RepaintBoundary.toImage → PNG → 浏览器下载 ──
+  // 海报已用 _boundaryKey 包裹,toImage(pixelRatio: 3) 拿高分辨率截图,
+  // toByteData(png) 拿字节,downloadPngBytes 走条件导入(web:dart:html
+  // AnchorElement+Blob;移动端 stub 返回 false)。成功 toast「已保存」。
+  // 注:messenger 在 await 前捕获,避免 use_build_context_synchronously。
+  Future<void> _saveImage() async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    void snack(String msg) {
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+
+    final boundary = _boundaryKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+    if (boundary == null) {
+      snack('保存失败');
+      return;
+    }
+    try {
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        snack('保存失败');
+        return;
+      }
+      final bytes = byteData.buffer.asUint8List();
+      final ok = await downloadPngBytes(
+        bytes,
+        'kankan-${widget.shareType}-${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      snack(ok ? '已保存' : '保存失败(仅支持 Web)');
+    } catch (_) {
+      snack('保存失败');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -477,17 +511,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
         _channelButton(
           icon: Icons.download_outlined,
           label: '保存图片',
-          onTap: () {
-            // TODO: Phase 5 接 share_plus / gallery_saver
-            // 真截图流程:
-            //   final boundary = _boundaryKey.currentContext?.findRenderObject()
-            //       as RenderRepaintBoundary?;
-            //   if (boundary == null) return;
-            //   final image = await boundary.toImage(pixelRatio: 3.0);
-            //   final byteData = await image.toByteData(format: ImageByteFormat.png);
-            //   → 写入相册(gallery_saver)
-            _showSnack('保存图片功能将在后续版本接入');
-          },
+          onTap: _saveImage,
         ),
       ],
     );

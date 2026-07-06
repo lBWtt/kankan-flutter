@@ -14,6 +14,7 @@ import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
 import 'avatar.dart';
+import 'image_lightbox.dart';
 
 /// HANDOFF §1 动态卡(轻)— 发现页 feed 用。
 ///
@@ -184,6 +185,8 @@ class PostCard extends ConsumerWidget {
 // >9 张 → 只显前 9,第 9 张叠「+N」遮罩
 // 每张:Image.network(loadingBuilder/errorBuilder 回退 CoverArt,同 project_card);
 // video 叠 play 图标。
+//
+// 任务 A:图片格点 → openImageLightbox(全屏缩放);视频格不进灯箱。
 class _ImageGrid extends StatelessWidget {
   final List<MediaItem> media;
 
@@ -195,6 +198,9 @@ class _ImageGrid extends StatelessWidget {
     final count = shown.length;
     final overflow = media.length - 9; // >0 表示有溢出
 
+    // 任务 A:灯箱只收图片 url(video 排除),供 _GridCell onTap 用。
+    final imageUrls = [for (final m in shown) if (m.type != 'video') m.url];
+
     if (count == 1) {
       // 单大图 16:9
       return _GridCell(
@@ -202,15 +208,29 @@ class _ImageGrid extends StatelessWidget {
         aspect: 16 / 9,
         borderRadius: KkRadius.md,
         overlayCount: overflow > 0 ? overflow : null,
+        imageUrls: imageUrls,
+        imageIndex: shown[0].type != 'video' ? 0 : null,
       );
     }
 
     if (count == 2) {
       return Row(
         children: [
-          Expanded(child: _GridCell(media: shown[0], aspect: 1)),
+          Expanded(
+              child: _GridCell(
+                  media: shown[0],
+                  aspect: 1,
+                  imageUrls: imageUrls,
+                  imageIndex: shown[0].type != 'video' ? 0 : null)),
           const SizedBox(width: KkSpacing.xs),
-          Expanded(child: _GridCell(media: shown[1], aspect: 1)),
+          Expanded(
+              child: _GridCell(
+                  media: shown[1],
+                  aspect: 1,
+                  imageUrls: imageUrls,
+                  imageIndex: shown[1].type != 'video'
+                      ? (shown[0].type != 'video' ? 1 : 0)
+                      : null)),
         ],
       );
     }
@@ -219,7 +239,12 @@ class _ImageGrid extends StatelessWidget {
       return Row(
         children: [
           for (var i = 0; i < 3; i++) ...[
-            Expanded(child: _GridCell(media: shown[i], aspect: 1)),
+            Expanded(
+                child: _GridCell(
+                    media: shown[i],
+                    aspect: 1,
+                    imageUrls: imageUrls,
+                    imageIndex: _imageIndexOf(imageUrls, shown, i))),
             if (i < 2) const SizedBox(width: KkSpacing.xs),
           ],
         ],
@@ -240,22 +265,42 @@ class _ImageGrid extends StatelessWidget {
             media: shown[i],
             aspect: 1,
             overlayCount: (i == 8 && overflow > 0) ? overflow : null,
+            imageUrls: imageUrls,
+            imageIndex: _imageIndexOf(imageUrls, shown, i),
           ),
       ],
     );
   }
+
+  /// 计算该格在 imageUrls 中的下标(视频格返回 null → 不开灯箱)。
+  /// 按该格在 shown 里的位置 i,数它之前有多少张图片。
+  int? _imageIndexOf(List<String> imageUrls, List<MediaItem> shown, int i) {
+    if (shown[i].type == 'video') return null;
+    var idx = 0;
+    for (var j = 0; j < i; j++) {
+      if (shown[j].type != 'video') idx++;
+    }
+    return idx < imageUrls.length ? idx : null;
+  }
 }
 
 // ── 单格(Image.network + CoverArt 回退;video 叠 play;溢出叠+N)──
+// 任务 A:imageIndex != null → 图片格,Tappable 包裹开灯箱;video 不包。
 class _GridCell extends StatelessWidget {
   final MediaItem media;
   final double aspect;
   final double borderRadius;
   final int? overlayCount; // >0 时叠「+N」遮罩(仅溢出末格)
+  /// 图片格:该格在 imageUrls 中的下标(非 null → 点开灯箱)。
+  /// 视频格:null(不进灯箱)。
+  final List<String> imageUrls;
+  final int? imageIndex;
 
   const _GridCell({
     required this.media,
     required this.aspect,
+    required this.imageUrls,
+    this.imageIndex,
     this.borderRadius = KkRadius.sm,
     this.overlayCount,
   });
@@ -264,7 +309,7 @@ class _GridCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final isVideo = media.type == 'video';
     final url = isVideo ? (media.poster ?? media.url) : media.url;
-    return AspectRatio(
+    final cell = AspectRatio(
       aspectRatio: aspect,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
@@ -311,6 +356,20 @@ class _GridCell extends StatelessWidget {
         ),
       ),
     );
+
+    // 任务 A:图片格(imageIndex != null)→ Tappable 包裹开灯箱;video 不包。
+    if (imageIndex != null && imageUrls.isNotEmpty) {
+      return Tappable(
+        onTap: () => openImageLightbox(
+          context,
+          urls: imageUrls,
+          initialIndex: imageIndex!,
+        ),
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: cell,
+      );
+    }
+    return cell;
   }
 }
 

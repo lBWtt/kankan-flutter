@@ -336,8 +336,9 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
                   ],
                 ),
               ),
-              // 关注按钮(占位,Phase 3 接 followProvider)
-              _FollowButton(),
+              // 关注按钮(任务 C:接全局 appStateProvider.followedUserIds,
+              // 与 post_card / post_detail / profile 同源,A 屏点 B 屏同步)。
+              if (project.authorId != 'me') _FollowButton(userId: project.authorId),
             ],
           ),
           const SizedBox(height: KkSpacing.lg),
@@ -712,18 +713,22 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-class _FollowButton extends StatefulWidget {
-  @override
-  State<_FollowButton> createState() => _FollowButtonState();
-}
+// 任务 C:从 StatefulWidget 本地态改为 ConsumerWidget 接全局 follow。
+// 旧实现用 bool _following + setState,与全局 appStateProvider.followedUserIds
+// 不同步 → 详情页点了关注,profile/discover 的关注态不变(A 屏点 B 屏不变)。
+// 现统一 watch 全局态,与 post_card._FollowButton / post_detail._FollowButton 同源。
+class _FollowButton extends ConsumerWidget {
+  final String userId;
 
-class _FollowButtonState extends State<_FollowButton> {
-  bool _following = false;
+  const _FollowButton({required this.userId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final following =
+        ref.watch(appStateProvider).followedUserIds.contains(userId);
     return Tappable(
-      onTap: () => setState(() => _following = !_following),
+      onTap: () =>
+          ref.read(appStateProvider.notifier).toggleFollow(userId),
       borderRadius: BorderRadius.circular(KkRadius.pill),
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -731,16 +736,16 @@ class _FollowButtonState extends State<_FollowButton> {
           horizontal: KkSpacing.lg,
         ),
         decoration: BoxDecoration(
-          color: _following ? KkColors.bgSubtle : KkColors.teal,
+          color: following ? KkColors.bgSubtle : KkColors.teal,
           borderRadius: BorderRadius.circular(KkRadius.pill),
-          border: _following
+          border: following
               ? Border.all(color: KkColors.bd)
               : null,
         ),
         child: Text(
-          _following ? '已关注' : '关注',
+          following ? '已关注' : '关注',
           style: TextStyle(
-            color: _following ? KkColors.t2 : Colors.white,
+            color: following ? KkColors.t2 : Colors.white,
             fontSize: 13,
             fontWeight: FontWeight.w600,
             fontFamily: 'NotoSerifSC',

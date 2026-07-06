@@ -16,6 +16,7 @@ import '../../router/routes.dart';
 import '../shared/avatar.dart';
 import '../shared/comment_thread.dart';
 import '../shared/empty_state.dart';
+import '../shared/image_lightbox.dart';
 import '../shared/report_sheet.dart';
 import '../shared/share_sheet.dart';
 
@@ -35,6 +36,12 @@ import '../shared/share_sheet.dart';
 /// 零旁白(HANDOFF §3):无「快来分享看法」之类引导。
 /// 珊瑚橙(HANDOFF §5):只给 like 图标在已点赞时的情感色,别处禁用。
 /// 更多 sheet 的 举报 / 不感兴趣 用 t1 文字,非珊瑚橙。
+///
+/// 任务 B:评论图标 onTap 原为空(哑火),改 Scrollable.ensureVisible 滚到
+/// CommentThread。用 top-level key(单屏同时只一个 post_detail,无冲突)。
+final GlobalKey _commentThreadKey =
+    GlobalKey(debugLabel: 'postDetailCommentThread');
+
 class PostDetailScreen extends ConsumerWidget {
   final String postId;
 
@@ -239,8 +246,16 @@ class PostDetailScreen extends ConsumerWidget {
                 icon: Icons.chat_bubble_outline,
                 value: formatCount(comments.length),
                 color: KkColors.t3,
+                // 任务 B:原空 onTap(哑火)→ 滚到 CommentThread(ensureVisible)。
                 onTap: () {
-                  // 评论数就在下方 CommentThread,无需跳转
+                  final ctx = _commentThreadKey.currentContext;
+                  if (ctx != null) {
+                    Scrollable.ensureVisible(
+                      ctx,
+                      alignment: 0.0,
+                      duration: const Duration(milliseconds: 300),
+                    );
+                  }
                 },
               ),
               const SizedBox(width: KkSpacing.lg),
@@ -281,6 +296,7 @@ class PostDetailScreen extends ConsumerWidget {
         const Divider(height: 1, color: KkColors.divider),
         // 8. 心得讨论(CommentThread:header 显示「心得 N」+ 输入框 + 长按 hook)
         CommentThread(
+          key: _commentThreadKey,
           hostType: 'post',
           hostId: post.id,
           initialComments: comments,
@@ -623,6 +639,8 @@ class _IconStat extends StatelessWidget {
 /// Post.media 只允许 image(HANDOFF §1 — 视频走 Project)。
 /// mock 阶段 URL 是占位,用色块 + 图标替代真实图;Phase 5 接真图时换
 /// CachedNetworkImage,接口不变。
+///
+/// 任务 A:每格点 → openImageLightbox(全屏缩放,收真实 url 列表)。
 class _ImageGrid extends StatelessWidget {
   final List<MediaItem> media;
 
@@ -639,6 +657,8 @@ class _ImageGrid extends StatelessWidget {
             ? 2
             : 3;
 
+    final urls = [for (final m in images) m.url];
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -650,17 +670,25 @@ class _ImageGrid extends StatelessWidget {
       ),
       itemCount: images.length,
       itemBuilder: (context, i) {
-        return Container(
-          decoration: BoxDecoration(
-            color: KkColors.bgSubtle,
-            borderRadius: BorderRadius.circular(KkRadius.md),
-            border: Border.all(color: KkColors.bd),
+        return Tappable(
+          onTap: () => openImageLightbox(
+            context,
+            urls: urls,
+            initialIndex: i,
           ),
-          alignment: Alignment.center,
-          child: const Icon(
-            Icons.image_outlined,
-            size: 28,
-            color: KkColors.t4,
+          borderRadius: BorderRadius.circular(KkRadius.md),
+          child: Container(
+            decoration: BoxDecoration(
+              color: KkColors.bgSubtle,
+              borderRadius: BorderRadius.circular(KkRadius.md),
+              border: Border.all(color: KkColors.bd),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.image_outlined,
+              size: 28,
+              color: KkColors.t4,
+            ),
           ),
         );
       },
