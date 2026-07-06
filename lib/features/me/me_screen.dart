@@ -151,6 +151,44 @@ class MeScreen extends ConsumerWidget {
     }
   }
 
+  // 任务 3:清空浏览历史二次确认(与 settings _confirmClearSearches 写法一致)。
+  // 零旁白:只列动作「清空最近看过?」+ 清空/取消,不写后果。确定 teal(非 take,
+  // 清空是中性操作,coral 只给 take/删除)。
+  Future<void> _confirmClearBrowse(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: const Text('清空最近看过？'),
+        contentTextStyle: KkType.body.copyWith(color: KkColors.t1),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: KkSpacing.md,
+          vertical: KkSpacing.sm,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('取消', style: KkType.bodySm.copyWith(color: KkColors.t3)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('清空', style: KkType.bodySm.copyWith(color: KkColors.teal)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      ref.read(appStateProvider.notifier).clearBrowseHistory();
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      messenger?.showSnackBar(
+        const SnackBar(
+          content: Text('已清空'),
+          duration: Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   // ──────────────────────────────────────────────────────────────────
   // 5. 我的贡献 卡片(白卡 + bare 热力图嵌入,整卡 → activity)
   // ──────────────────────────────────────────────────────────────────
@@ -361,9 +399,8 @@ class MeScreen extends ConsumerWidget {
               const Spacer(),
               if (recent.isNotEmpty)
                 Tappable(
-                  // 清空浏览历史(已接通 app_state.clearBrowseHistory)。
-                  onTap: () =>
-                      ref.read(appStateProvider.notifier).clearBrowseHistory(),
+                  // 任务 3:清空浏览历史加二次确认(与删帖/登出/清搜索一致)。
+                  onTap: () => _confirmClearBrowse(context, ref),
                   borderRadius: BorderRadius.circular(KkRadius.sm),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
