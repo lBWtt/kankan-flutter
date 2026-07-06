@@ -9,6 +9,7 @@ import '../../core/widgets/kk_back_button.dart';
 import '../../core/widgets/skeletons.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
+import '../../providers/analytics_provider.dart';
 import '../../providers/clue_provider.dart';
 import '../shared/empty_state.dart';
 import '../shared/project_card.dart';
@@ -46,6 +47,13 @@ class _ImplementationClueScreenState
   /// markedProjectIds 派生(P1 状态一致性修复:退出重进页面 marked 态不丢,
   /// 同一用户反复点击不会重复 +1)。
   bool _marking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 埋点:线索页浏览 = 点了「想看怎么做」(漏斗 clue_views)。真后端项目(UUID)才发。
+    ref.read(analyticsProvider).track('how_to_interest', projectId: widget.projectId);
+  }
 
   /// 点「想看怎么做」— ZAI_PLAYBOOK Part 4 主信号,游客可用,不设登录墙。
   Future<void> _onHowToTap() async {

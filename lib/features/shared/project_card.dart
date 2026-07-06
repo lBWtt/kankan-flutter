@@ -11,6 +11,7 @@ import '../../core/widgets/kk_reaction_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../data/seed/mock_seed.dart';
+import '../../providers/analytics_provider.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
@@ -52,6 +53,8 @@ class ProjectCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 埋点:卡片曝光(会话内同项目只记一次)。真后端项目(UUID)才发。
+    ref.read(analyticsProvider).trackImpressionOnce(project.id);
     if (compact) return _compact(context, ref);
     return _full(context, ref);
   }
@@ -65,6 +68,7 @@ class ProjectCard extends ConsumerWidget {
 
     return Tappable(
       onTap: () {
+        ref.read(analyticsProvider).track('card_click', projectId: project.id);
         ref.read(appStateProvider.notifier).recordBrowse(project.id);
         context.push(KkRoutes.detail(project.id));
       },
@@ -201,6 +205,7 @@ class ProjectCard extends ConsumerWidget {
   Widget _compact(BuildContext context, WidgetRef ref) {
     return Tappable(
       onTap: () {
+        ref.read(analyticsProvider).track('card_click', projectId: project.id);
         ref.read(appStateProvider.notifier).recordBrowse(project.id);
         context.push(KkRoutes.detail(project.id));
       },

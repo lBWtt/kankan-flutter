@@ -15,6 +15,7 @@ import '../../core/network/app_exception.dart';
 import '../../core/utils/backend_id.dart';
 import '../../data/api/projects_api.dart';
 import '../../data/seed/mock_seed.dart';
+import '../../providers/analytics_provider.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/clue_provider.dart';
@@ -64,6 +65,13 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
   // 无需 ScrollController,自动找最近 Scrollable)。
   final GlobalKey _commentsKey = GlobalKey();
   final GlobalKey _actionsKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    // 埋点:详情打开(漏斗 detail_view + hot_score 详情权重)。真后端项目(UUID)才发。
+    ref.read(analyticsProvider).track('detail_view', projectId: widget.projectId);
+  }
 
   void _scrollToComments() {
     final ctx = _commentsKey.currentContext;
