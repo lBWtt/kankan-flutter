@@ -35,6 +35,22 @@ class ProjectsApi {
     }
   }
 
+  /// POST /projects → 发布项目（需登录，走 v2 字段）。
+  /// 成功返回后端 ProjectDetail 映射的 Project（含真 uuid）。
+  /// 准入不过后端回 409 PUBLISH_GATE_FAILED；AppException 透出给 UI 提示。
+  Future<Project> create(Map<String, dynamic> body) async {
+    try {
+      final resp = await _dio.post<dynamic>('/projects', data: body);
+      final data = resp.data;
+      if (data is Map) {
+        return projectFromDetailJson(Map<String, dynamic>.from(data));
+      }
+      throw const AppException(code: 'UNKNOWN', message: '发布返回格式异常');
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
   /// GET /projects/{id} → 单个项目详情（比卡片多 intro/author/media/counts）。
   Future<Project?> detail(String id) async {
     try {

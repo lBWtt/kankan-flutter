@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/network/app_exception.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/theme/noise_background.dart';
 import '../../core/widgets/tappable.dart';
+import '../../data/api/projects_api.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/publish_provider.dart';
 import '../../router/routes.dart';
 import 'widgets/add_takeaway_sheet.dart';
@@ -383,7 +386,7 @@ class PublishScreen extends ConsumerWidget {
     );
   }
 
-  void _publish(BuildContext context, WidgetRef ref) {
+  Future<void> _publish(BuildContext context, WidgetRef ref) async {
     final draft = ref.read(publishDraftProvider);
     // 简单校验:至少有标题 + 一个内容(media 或 actions 或 text)
     if (draft.title.isEmpty) {
@@ -396,18 +399,50 @@ class PublishScreen extends ConsumerWidget {
       _toast(context, '至少放一样东西');
       return;
     }
-    // 构建 Project(产出结构 = 详情端所读的 {resultData, actions})
+
+    // 登录 → 先真发后端(POST /projects)。成功用返回的真项目(真 uuid)入 feed;
+    // 准入不过(409)提示文案、留草稿让用户补方法;其它错回退本地发布。
+    // 未登录 → 本地 mock 发布(保持演示)。
+    if (ref.read(authProvider).isLoggedIn) {
+      try {
+        final remote =
+            await ref.read(projectsApiProvider).create(draft.toCreateJson());
+        if (!context.mounted) return;
+        _addAndFinish(context, ref, remote, '已发布到「看看」');
+        return;
+      } on AppException catch (e) {
+        if (!context.mounted) return;
+        if (e.code == 'PUBLISH_GATE_FAILED') {
+          // 纯单图无方法 → 红线拒发。不入库,不重置草稿,让用户补方法后重发。
+          _toast(context, e.message);
+          return;
+        }
+        // 网络/其它后端错 → 回退本地发布,不挡用户。
+        final local = draft.toProject(
+          id: 'user_${DateTime.now().millisecondsSinceEpoch}',
+          authorId: 'me',
+          createdAtMs: DateTime.now().millisecondsSinceEpoch,
+        );
+        _addAndFinish(context, ref, local, '已本地发布(后端未同步)');
+        return;
+      }
+    }
+
+    // 未登录:本地 mock 发布(内存级,发布后 discover/kankan/profile 重读即见)。
     final project = draft.toProject(
       id: 'user_${DateTime.now().millisecondsSinceEpoch}',
       authorId: 'me',
       createdAtMs: DateTime.now().millisecondsSinceEpoch,
     );
-    // F-2:写入内存 repository(mockProjects 共享引用,列表头部)。
-    // 发布后 discover / kankan / profile 重新读取即可见。内存级,不碰 Drift。
+    _addAndFinish(context, ref, project, '已发布: ${project.title}');
+  }
+
+  /// 收尾:项目入内存 repo + 刷新依赖屏 + toast + 清草稿 + 返回。
+  void _addAndFinish(
+      BuildContext context, WidgetRef ref, Project project, String msg) {
     ref.read(projectRepositoryProvider).add(project);
-    // 让依赖 projectRepositoryProvider 的屏(kankan / me / profile)刷新看到新项目。
     ref.invalidate(projectRepositoryProvider);
-    _toast(context, '已发布: ${project.title}');
+    _toast(context, msg);
     ref.read(publishDraftProvider.notifier).reset();
     if (context.canPop()) {
       context.pop();

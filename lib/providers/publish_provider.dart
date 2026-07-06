@@ -95,6 +95,33 @@ class PublishDraft {
     );
   }
 
+  /// 构造后端 POST /projects 的 v2 payload（登录后真发布用）。
+  ///
+  /// 走 v2 路径：source_kind='user_original' 标记 v2 + 直接 published。
+  /// 准入（后端 409 红线）：actions 非空 / tools≥1 / intro≥20 字 任一即过——
+  /// 前端把「作者的话 / 正文 / 一句话」拼进 intro，短于 20 字且无方法则后端拒发（正确行为）。
+  ///
+  /// 已知分叉（媒体）：media 是 image_picker 的 blob URL，未走 POST /media 上传，
+  /// 故 media_ids 空——真媒体上传是独立后续。domain(成果类型)与后端 domains(职业枚举)
+  /// 不同源，不透传，交后端按 vertical 兜底。
+  Map<String, dynamic> toCreateJson() {
+    // intro：优先作者的话，其次正文，再次一句话价值（尽量凑够准入 20 字）。
+    final introParts = <String>[
+      if (authorNote.trim().isNotEmpty) authorNote.trim(),
+      if (text != null && text!.trim().isNotEmpty) text!.trim(),
+    ];
+    var intro = introParts.join('\n');
+    if (intro.isEmpty) intro = summary.trim();
+    return <String, dynamic>{
+      'title': title.trim(),
+      if (summary.trim().length >= 5) 'tagline': summary.trim(),
+      if (intro.isNotEmpty) 'intro': intro,
+      'source_kind': 'user_original',
+      'is_original': true,
+      'tags': tags,
+    };
+  }
+
   /// 视频排前(HANDOFF §4:传图视频→成果,视频自动排前)
   static List<MediaItem> _videoFirst(List<MediaItem> media) {
     final videos = media.where((m) => m.type == 'video').toList();
