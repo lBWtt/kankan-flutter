@@ -313,6 +313,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           trailing: auth.currentUser!.name,
         ),
         _divider(),
+        // 任务 5:已登录时加「编辑资料」入口(→ /profile/edit)。
+        // 未登录不显(上面 if 分支已 return 只有登录入口)。
+        _menuRow(
+          icon: Icons.edit_outlined,
+          label: '编辑资料',
+          onTap: () => context.push(KkRoutes.profileEdit),
+        ),
+        _divider(),
         _menuRow(
           icon: Icons.logout_outlined,
           label: '退出登录',

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/app_state_provider.dart';
 import '../theme/kk_colors.dart';
 import '../theme/tokens.dart';
 import '../theme/noise_background.dart';
@@ -57,7 +59,7 @@ class KkRootShell extends StatelessWidget {
 // 底部 5 槽栏
 // ──────────────────────────────────────────────────────────────────
 
-class _KkBottomBar extends StatelessWidget {
+class _KkBottomBar extends ConsumerWidget {
   /// 当前激活的 branch index(0..3,跳过 FAB 槽)
   final int currentIndex;
 
@@ -74,7 +76,11 @@ class _KkBottomBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 任务 4:底部 Tab 叠未读红点(「我的」 tab)。用 effectiveUnreadCount
+    // (免打扰开启时归零,红点自动消失)。红点用 KkColors.like(情感色,与 me
+    // 页铃铛红点一致;非 take,所以不用 coral)。
+    final unreadCount = ref.watch(appStateProvider).effectiveUnreadCount;
     return Container(
       decoration: const BoxDecoration(
         color: KkColors.bgCard,
@@ -86,11 +92,11 @@ class _KkBottomBar extends StatelessWidget {
           height: 56,
           child: Row(
             children: [
-              Expanded(child: _tab(0, '发现', Icons.explore_outlined, Icons.explore)),
-              Expanded(child: _tab(1, '看看', Icons.grid_view_outlined, Icons.grid_view)),
+              Expanded(child: _tab(context, 0, '发现', Icons.explore_outlined, Icons.explore, showBadge: false)),
+              Expanded(child: _tab(context, 1, '看看', Icons.grid_view_outlined, Icons.grid_view, showBadge: false)),
               Expanded(child: _fab()),
-              Expanded(child: _tab(2, '收藏', Icons.bookmark_border_outlined, Icons.bookmark)),
-              Expanded(child: _tab(3, '我的', Icons.person_outline, Icons.person)),
+              Expanded(child: _tab(context, 2, '收藏', Icons.bookmark_border_outlined, Icons.bookmark, showBadge: false)),
+              Expanded(child: _tab(context, 3, '我的', Icons.person_outline, Icons.person, showBadge: unreadCount > 0)),
             ],
           ),
         ),
@@ -99,7 +105,9 @@ class _KkBottomBar extends StatelessWidget {
   }
 
   /// branch index → Tab 槽。激活态:mint pill 底 + 墨绿图标/文字(动画过渡)。
-  Widget _tab(int branchIndex, String label, IconData icon, IconData activeIcon) {
+  /// 任务 4:showBadge=true 时,图标右上角叠未读红点(KkColors.like 小圆点)。
+  Widget _tab(BuildContext context, int branchIndex, String label,
+      IconData icon, IconData activeIcon, {required bool showBadge}) {
     final isActive = currentIndex == branchIndex;
     final color = isActive ? KkColors.teal : KkColors.t3;
 
@@ -108,20 +116,39 @@ class _KkBottomBar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // pill(mint 底,激活时显形,AnimatedContainer 过渡)
-          AnimatedContainer(
-            duration: KkDuration.med,
-            curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: isActive ? KkColors.mint : Colors.transparent,
-              borderRadius: BorderRadius.circular(KkRadius.pill),
-            ),
-            child: Icon(
-              isActive ? activeIcon : icon,
-              size: 22,
-              color: color,
-            ),
+          // pill(mint 底,激活时显形,AnimatedContainer 过渡)+ 可选红点
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedContainer(
+                duration: KkDuration.med,
+                curve: Curves.easeOut,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isActive ? KkColors.mint : Colors.transparent,
+                  borderRadius: BorderRadius.circular(KkRadius.pill),
+                ),
+                child: Icon(
+                  isActive ? activeIcon : icon,
+                  size: 22,
+                  color: color,
+                ),
+              ),
+              // 未读红点:图标右上角,8×8,KkColors.like
+              if (showBadge)
+                Positioned(
+                  top: -1,
+                  right: -2,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: KkColors.like,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 2),
           AnimatedDefaultTextStyle(

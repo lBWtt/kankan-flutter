@@ -241,8 +241,27 @@ class _ProjectList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 后端接入开关(--dart-define=USE_REMOTE=true):真数据走 remote,否则 mock。
     // 默认 mock,不带 flag 构建行为完全不变。
-    if (AppConfig.useRemote) return _remoteList(context, ref);
-    return _mockList(context, ref);
+    // 任务 1:套 RefreshIndicator——下拉重拉。remote 下拉 invalidate
+    // remoteProjectsProvider(等 .future 完成指示器才收);mock 下拉重建无害。
+    if (AppConfig.useRemote) {
+      return RefreshIndicator(
+        color: KkColors.teal,
+        onRefresh: () async {
+          ref.invalidate(remoteProjectsProvider);
+          await ref.read(remoteProjectsProvider.future);
+        },
+        child: _remoteList(context, ref),
+      );
+    }
+    return RefreshIndicator(
+      color: KkColors.teal,
+      onRefresh: () async {
+        // mock:重建无害,invalidate projectRepositoryProvider 让 watch 重建。
+        ref.invalidate(projectRepositoryProvider);
+        await Future.delayed(const Duration(milliseconds: 400));
+      },
+      child: _mockList(context, ref),
+    );
   }
 
   // ── mock 数据源(内存 repo,默认)──

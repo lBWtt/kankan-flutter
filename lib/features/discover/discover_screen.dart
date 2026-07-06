@@ -190,7 +190,7 @@ class _RecommendFeed extends ConsumerWidget {
     // 任务⑬:推荐流顶部「今日话题」横条(话题空则不渲染,零旁白)。
     final topics = ref.watch(searchRepositoryProvider).topTopics(limit: 8);
 
-    final feed = posts.isEmpty
+    final list = posts.isEmpty
         ? ListView(
             children: const [EmptyState(variant: EmptyStateVariant.feed)],
           )
@@ -206,6 +206,19 @@ class _RecommendFeed extends ConsumerWidget {
               );
             },
           );
+
+    // 任务①:下拉刷新——invalidate post + search repo,今日话题也跟着重拉。
+    //   postRepositoryProvider 是同步 repo(无 .future),用短延迟让指示器可见。
+    //   空态 ListView 也可下拉(RefreshIndicator 只要求 child 是 ScrollView)。
+    final feed = RefreshIndicator(
+      color: KkColors.teal,
+      onRefresh: () async {
+        ref.invalidate(postRepositoryProvider);
+        ref.invalidate(searchRepositoryProvider);
+        await Future.delayed(const Duration(milliseconds: 400));
+      },
+      child: list,
+    );
 
     if (topics.isEmpty) return feed;
     return Column(
@@ -374,22 +387,36 @@ class _FollowingFeed extends ConsumerWidget {
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
 
     if (posts.isEmpty) {
-      return ListView(
-        children: const [EmptyState(variant: EmptyStateVariant.feed)],
+      return RefreshIndicator(
+        color: KkColors.teal,
+        onRefresh: () async {
+          ref.invalidate(postRepositoryProvider);
+          await Future.delayed(const Duration(milliseconds: 400));
+        },
+        child: ListView(
+          children: const [EmptyState(variant: EmptyStateVariant.feed)],
+        ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
-      itemCount: posts.length,
-      itemBuilder: (context, i) {
-        final post = posts[i];
-        return PostCard(
-          post: post,
-          onTap: () => context.push(KkRoutes.postDetail(post.id)),
-          onCommentTap: () => _showComments(context, ref, post),
-        );
+    return RefreshIndicator(
+      color: KkColors.teal,
+      onRefresh: () async {
+        ref.invalidate(postRepositoryProvider);
+        await Future.delayed(const Duration(milliseconds: 400));
       },
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
+        itemCount: posts.length,
+        itemBuilder: (context, i) {
+          final post = posts[i];
+          return PostCard(
+            post: post,
+            onTap: () => context.push(KkRoutes.postDetail(post.id)),
+            onCommentTap: () => _showComments(context, ref, post),
+          );
+        },
+      ),
     );
   }
 
