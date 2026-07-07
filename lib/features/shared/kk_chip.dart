@@ -121,8 +121,12 @@ class KkChip extends StatelessWidget {
           ),
           if (removable && onRemove != null) ...[
             const SizedBox(width: KkSpacing.xs),
+            // P2-无障碍:× 关闭是 icon-only 按钮,必须传 semanticLabel。
+            // 读屏会念「移除 <chip label>」。注:'移除' 当前硬编码,
+            // i18n 全量迁移时加入 KkStrings.remove + arb 条目。
             Tappable(
               onTap: onRemove,
+              semanticLabel: '移除 $label',
               borderRadius: BorderRadius.circular(KkRadius.pill),
               child: Padding(
                 padding: const EdgeInsets.all(2),
@@ -138,12 +142,18 @@ class KkChip extends StatelessWidget {
     // 修 bug:原来用 Tappable 包裹,其内部 Center 在 Wrap 里会撑满整行宽度,
     // 导致可点 chip 各占一行、居中显示(阶梯状很丑)。改用自适应 InkWell,
     // 尺寸贴合 chip,Wrap 里正常左排流式换行。
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(KkRadius.pill),
-        child: chip,
+    // P2-无障碍:外层 InkWell 没有自带 button 语义,这里显式 Semantics(button: true)
+    // + label(chip 的 Text 会自动 merge,但显式 button 让读屏念「<label>, 按钮」)。
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(KkRadius.pill),
+          child: chip,
+        ),
       ),
     );
   }

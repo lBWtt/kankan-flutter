@@ -11,6 +11,7 @@ import '../../core/widgets/skeletons.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../l10n/kk_strings.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/remote_project_provider.dart';
 import '../../router/routes.dart';
@@ -122,6 +123,9 @@ class _KankanScreenState extends ConsumerState<KankanScreen>
   }
 
   Widget _topBar() {
+    // P2-i18n / 无障碍:榜单 + 搜索图标都是 icon-only 按钮,必须传 semanticLabel,
+    // 否则读屏只会念「按钮」无具体含义。标签接 KkStrings(zh: 榜单 / 搜索)。
+    final s = ref.watch(kkStringsProvider);
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: KkSpacing.lg,
@@ -152,12 +156,14 @@ class _KankanScreenState extends ConsumerState<KankanScreen>
           const Spacer(),
           Tappable(
             onTap: () => context.push(KkRoutes.ranking),
+            semanticLabel: s.ranking,
             child: const Icon(Icons.emoji_events_outlined,
                 size: 22, color: KkColors.t1),
           ),
           const SizedBox(width: KkSpacing.md),
           Tappable(
             onTap: () => context.push(KkRoutes.search),
+            semanticLabel: s.search,
             child: const Icon(Icons.search, size: 22, color: KkColors.t1),
           ),
         ],

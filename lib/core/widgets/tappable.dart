@@ -22,9 +22,15 @@ import '../theme/tokens.dart';
 /// Web 版重灾区:detail 动作钮 34×34、Tab pill 30×23、搜索图标 20×20……
 /// Flutter 端从组件层做对——所有可点元素走这个 Tappable,默认 44pt。
 ///
+/// P2-无障碍:[semanticLabel] 可选。Icon-only 按钮必须传(读屏需要文字念),
+/// 含文字的按钮 Flutter 自动从子 Text 推断语义标签,可省略。null 时不包
+/// Semantics(向后兼容现有 ~146 处调用点)。
+///
 /// 用法:
 ///   Tappable(onTap: ..., child: Icon(Icons.add, size: 22))
 ///   Tappable(onTap: ..., borderRadius: ..., padding: ..., child: Row(...))
+///   // icon-only 必须:
+///   Tappable(onTap: ..., semanticLabel: '搜索', child: Icon(Icons.search))
 class Tappable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -34,6 +40,10 @@ class Tappable extends StatefulWidget {
   final bool disabled;
   final EdgeInsetsGeometry padding;
   final double minSize;
+
+  /// P2-无障碍:可选语义标签。null 时不包 Semantics(向后兼容)。
+  /// Icon-only 按钮必须传,否则读屏只会念「按钮」无具体含义。
+  final String? semanticLabel;
 
   const Tappable({
     super.key,
@@ -45,6 +55,7 @@ class Tappable extends StatefulWidget {
     this.disabled = false,
     this.padding = EdgeInsets.zero,
     this.minSize = KkTouch.minTarget,
+    this.semanticLabel,
   });
 
   @override
@@ -101,7 +112,7 @@ class _TappableState extends State<Tappable>
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
+    final core = Opacity(
       opacity: widget.disabled ? 0.4 : 1.0,
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -133,6 +144,17 @@ class _TappableState extends State<Tappable>
           ),
         ),
       ),
+    );
+
+    // P2-无障碍:icon-only 按钮传 semanticLabel 时包 Semantics,把语义标签
+    // 合并到 InkWell 自带的 button 节点(读屏念「<label>, 按钮」)。
+    // null 时直接返回 core,向后兼容(不引入额外语义节点,不破坏现有行为)。
+    final label = widget.semanticLabel;
+    if (label == null) return core;
+    return Semantics(
+      label: label,
+      button: true,
+      child: core,
     );
   }
 }
