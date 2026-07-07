@@ -55,4 +55,45 @@ class PrefsKeys {
 
   /// publish 草稿 JSON:{title, summary, authorNote, text, tags, domain}
   static const draftPublish = 'draft_publish';
+
+  // ── P0-2 本地持久化：用户可变 state 切片 ──
+  // 草稿已由 draft_* 覆盖；这里是「我拿走的 / 浏览历史 / 最近搜索 /
+  // 不感兴趣 / 偏好设置 / 游客点赞收藏关注 / 通知未读」——重启不丢。
+  // 合并策略（LocalStore.loadMerged）：persisted 存在则用 persisted，否则用 mock 种子。
+  // 用 kv_ 前缀避与 auth_* / draft_* 冲突。
+
+  /// 点赞过的项目/动态 ID 列表（List<String>）。游客点赞也能跨会话保留。
+  static const kvLikedIds = 'kv_liked_ids';
+
+  /// 收藏的项目 ID 列表。登录态另有后端回填（_loadFavoritesFromBackend）。
+  static const kvSavedProjectIds = 'kv_saved_project_ids';
+
+  /// 关注的用户 ID 列表。登录态另有后端回填。
+  static const kvFollowedUserIds = 'kv_followed_user_ids';
+
+  /// 「不感兴趣」ID 列表（单向 add）。
+  static const kvNotInterestedIds = 'kv_not_interested_ids';
+
+  /// 浏览历史（List<String>，最新在前，最多 50）。
+  static const kvBrowseHistory = 'kv_browse_history';
+
+  /// 通知未读 ID 列表。
+  static const kvUnreadNotifIds = 'kv_unread_notif_ids';
+
+  /// 最近搜索词 JSON：{query: tsMs}（Map<String,int> 序列化）。
+  static const kvRecentSearches = 'kv_recent_searches';
+
+  /// 「我拿走的」JSON：[{id,projectId,projectTitle,domain,kind,source,label,savedAtMs}]。
+  static const kvSavedTakeaways = 'kv_saved_takeaways';
+
+  // ── 偏好设置（settings 屏读写，重启生效）──
+
+  /// 字号：'小'/'标准'/'大'/'特大'。
+  static const kvFontScale = 'kv_font_scale';
+
+  /// 暖纸底纹开关。
+  static const kvPaperTexture = 'kv_paper_texture';
+
+  /// 免打扰开关。
+  static const kvDndEnabled = 'kv_dnd_enabled';
 }
