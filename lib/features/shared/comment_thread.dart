@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
+import '../../core/network/app_exception.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/utils/backend_id.dart';
 import '../../core/utils/time_ago.dart';
 import '../../core/utils/parse_count.dart';
 import '../../core/widgets/tappable.dart';
+import '../../data/api/comments_api.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
@@ -83,6 +87,33 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
   String? _replyingTo; // 正在回复的评论 ID;null = 顶级评论
   String? _editingId; // 任务⑨:正在编辑的评论 ID;null = 非编辑态
 
+  // 真数据模式:useRemote + 真后端宿主(UUID)→ 评论从后端读/写。
+  bool get _remote => AppConfig.useRemote && looksLikeBackendId(widget.hostId);
+  final Set<String> _remoteLiked = {}; // 后端返回的「我已赞」评论 id(前端 Comment 无此字段)
+
+  @override
+  void initState() {
+    super.initState();
+    if (_remote) _reloadRemote();
+  }
+
+  /// 远程模式:从后端拉评论树 + 已赞集合,刷新本地显示。
+  Future<void> _reloadRemote() async {
+    try {
+      final r = await ref.read(commentsApiProvider).list(widget.hostType, widget.hostId);
+      if (!mounted) return;
+      setState(() {
+        _comments = r.comments;
+        _remoteLiked
+          ..clear()
+          ..addAll(r.likedIds);
+      });
+      widget.onChanged?.call();
+    } catch (_) {
+      // 拉取失败:保留现状(初始为 initialComments，可能是空)
+    }
+  }
+
   @override
   void dispose() {
     _ctrl.dispose();
@@ -122,7 +153,9 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
               comment: c,
               onLike: () => _toggleLike(c.id),
               onReply: () => _startReply(c.id),
-              isLiked: ref.watch(appStateProvider).likedItemIds.contains(c.id),
+              isLiked: _remote
+                  ? _remoteLiked.contains(c.id)
+                  : ref.watch(appStateProvider).likedItemIds.contains(c.id),
               // 任务⑨:外部 onCommentLongPress 作为可选 override;
               // 外部没传则用内部 _showActions(接通复制/编辑(own)/删除(own)/打开链接)。
               onLongPress: widget.onCommentLongPress ?? _showActions,
@@ -147,7 +180,39 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
   }
 
   void _toggleLike(String commentId) {
+    if (_remote) {
+      final wasLiked = _remoteLiked.contains(commentId);
+      setState(() {
+        if (wasLiked) {
+          _remoteLiked.remove(commentId);
+        } else {
+          _remoteLiked.add(commentId);
+        }
+      });
+      ref.read(commentsApiProvider).setLike(commentId, !wasLiked).catchError((_) {
+        if (mounted) {
+          setState(() {
+            if (wasLiked) {
+              _remoteLiked.add(commentId);
+            } else {
+              _remoteLiked.remove(commentId);
+            }
+          });
+        }
+      });
+      return;
+    }
     ref.read(appStateProvider.notifier).toggleLike(commentId);
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   // ── 任务⑨:长按评论 → 动作 sheet(内部接通,直接改 _comments)──
@@ -272,6 +337,24 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
   }
 
   void _doDelete(Comment c) {
+    // 远程模式:删后端 → 重取。
+    if (_remote) {
+      setState(() {
+        _comments.removeWhere((x) => x.id == c.id); // 乐观移除
+      });
+      () async {
+        try {
+          await ref.read(commentsApiProvider).delete(c.id);
+          await _reloadRemote();
+        } on AppException catch (e) {
+          if (mounted) {
+            _toast(e.message);
+            await _reloadRemote(); // 失败也重取,恢复真实列表
+          }
+        }
+      }();
+      return;
+    }
     setState(() {
       _comments.removeWhere((x) => x.id == c.id);
     });
@@ -289,6 +372,30 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
     final isReply = _replyingTo != null;
     final text = (isReply ? _replyCtrl.text : _ctrl.text).trim();
     if (text.isEmpty) return;
+
+    // 远程模式:发到后端 → 重取。清输入、收起回复态。
+    if (_remote) {
+      final parentId = isReply ? _replyingTo : null;
+      setState(() {
+        if (isReply) {
+          _replyCtrl.clear();
+          _replyingTo = null;
+        } else {
+          _ctrl.clear();
+        }
+      });
+      FocusScope.of(context).unfocus();
+      () async {
+        try {
+          await ref.read(commentsApiProvider)
+              .create(widget.hostType, widget.hostId, text, parentId: parentId);
+          await _reloadRemote();
+        } on AppException catch (e) {
+          if (mounted) _toast(e.message);
+        }
+      }();
+      return;
+    }
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final newComment = Comment(
