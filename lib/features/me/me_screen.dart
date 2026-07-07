@@ -72,7 +72,7 @@ class MeScreen extends ConsumerWidget {
     var followerCount = mockFollower;
     if (isLoggedIn && AppConfig.useRemote) {
       // valueOrNull:loading 时 null → 显 mock 占位;data 时真值;error 时 null → mock 兜底。
-      final real = ref.watch(myCountsProvider).valueOrNull;
+      final real = ref.watch(myCountsProvider).value;
       if (real != null) {
         followingCount = real.following;
         followerCount = real.follower;

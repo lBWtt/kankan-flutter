@@ -79,7 +79,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     int followers = (user?.followerIds ?? const <String>[]).length;
     KkUser? displayUser = user;
     if (isRemoteUser) {
-      final pub = ref.watch(remoteUserPublicProvider(widget.userId)).valueOrNull;
+      final pub = ref.watch(remoteUserPublicProvider(widget.userId)).value;
       if (pub != null) {
         following = pub.followingCount;
         followers = pub.followerCount;

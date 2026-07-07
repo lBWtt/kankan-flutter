@@ -110,9 +110,9 @@ class _FollowsScreenState extends ConsumerState<FollowsScreen>
 
     // valueOrNull:loading 时 null → 退化 mock 计数占位;data 时真长度。
     final followingCount =
-        followingAsync?.valueOrNull?.length ?? mockFollowingIds.length;
+        followingAsync?.value?.length ?? mockFollowingIds.length;
     final followerCount =
-        followersAsync?.valueOrNull?.length ?? mockFollowerIds.length;
+        followersAsync?.value?.length ?? mockFollowerIds.length;
 
     // Tab 内容:remote → _RemoteFollowList(AsyncValue 三态);mock → _FollowList。
     final followingTab = isRemote
