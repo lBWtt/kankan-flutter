@@ -3,6 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/seed/mock_seed.dart';
 import '../../domain/models/models.dart';
 
+/// P1:Repo-module-private backing list — 启动期从 mockNotifications 拷贝一次,
+/// 此后 repo 运行时读写都走它,不再 reach into mock_seed 全局。与 backingProjects
+/// 同理:top-level final 跨 invalidate 存活(markRead 改动不丢)。
+/// 注意:activity_screen 仍直接读 mockNotifications 全局(列活动事件,不依赖 read
+/// 状态),那份读不受影响——本副本只服务 notification 屏的 all()/unread() 展示。
+final List<NotificationItem> backingNotifications = List.of(mockNotifications);
+
 /// 通知 Repository — HANDOFF §6.8 5 类精准跳转。
 ///
 /// Web 版重灾区:通知点击无差别跳转或跳错宿主。Flutter 端从零做对:
@@ -10,6 +17,8 @@ import '../../domain/models/models.dart';
 /// NotifScreen 根据 type 调不同路由(见 _routeFor 方法)。
 ///
 /// 计数铁律(HANDOFF §6.10):未读数 = unread 集合真实长度,不放大。
+///
+/// P1:持有 owned [backingNotifications] 副本(从 mock_seed 一次拷贝)。
 class NotificationRepository {
   final List<NotificationItem> _items;
 
@@ -51,5 +60,6 @@ class NotificationRepository {
 }
 
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
-  return NotificationRepository(List.of(mockNotifications));
+  // P1:注入 owned backingNotifications 副本(跨 invalidate 存活)。
+  return NotificationRepository(backingNotifications);
 });

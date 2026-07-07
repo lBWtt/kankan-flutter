@@ -2,6 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/seed/mock_seed.dart';
 import '../../domain/models/models.dart';
+// P1:复用 ProjectRepository / PostRepository 的 owned backing 副本——
+// 新发布的项目 / 动态要能被搜到,search 必须读同一份(不再各读 mock 全局)。
+import 'post_repository.dart';
+import 'project_repository.dart';
 
 /// 搜索 Repository — HANDOFF §6.2 真实 tags 索引 + 修复 Web 版两个 bug。
 ///
@@ -17,6 +21,10 @@ import '../../domain/models/models.dart';
 ///   - 搜话题:匹配 tag,聚合真实 projectCount / postCount / totalLikes
 ///
 /// 计数铁律(HANDOFF §6.10):所有结果数取真实数组长度,不放大。
+///
+/// P1:_projects / _posts 注入的是 [backingProjects] / [backingPosts](与
+/// ProjectRepository / PostRepository 同源 owned 副本),search 结果反映新发布。
+/// _users 仍是 mockUsers 全局引用(updateProfile 写它,userById 要读到)。
 class SearchRepository {
   final List<Project> _projects;
   final List<Post> _posts;
@@ -131,5 +139,7 @@ class SearchCounts {
 }
 
 final searchRepositoryProvider = Provider<SearchRepository>((ref) {
-  return SearchRepository(mockProjects, mockPosts, mockUsers);
+  // P1:backingProjects / backingPosts 与 ProjectRepo / PostRepo 同源 owned 副本;
+  // mockUsers 保留全局引用。search 结果反映新发布的项目 / 动态。
+  return SearchRepository(backingProjects, backingPosts, mockUsers);
 });
