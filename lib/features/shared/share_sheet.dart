@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
@@ -494,15 +495,11 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
+        // Phase 5：系统分享面板（微信/微博/QQ 等由系统 sheet 列出）。
         _channelButton(
-          icon: Icons.chat_outlined,
-          label: '微信',
-          onTap: () => _showSnack('分享功能将在后续版本接入'),
-        ),
-        _channelButton(
-          icon: Icons.public,
-          label: '微博',
-          onTap: () => _showSnack('分享功能将在后续版本接入'),
+          icon: Icons.share_outlined,
+          label: '分享',
+          onTap: _shareSystem,
         ),
         _channelButton(
           icon: Icons.link,
@@ -516,6 +513,20 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
         ),
       ],
     );
+  }
+
+  /// Phase 5：调用系统分享面板分享深链 + 标题。
+  /// share_plus 的 Share.share 会调起 iOS/Android 系统 share sheet，
+  /// 用户可选微信/微博/QQ/拷贝等；web 上退化为 Web Share API 或拷贝提示。
+  Future<void> _shareSystem() async {
+    try {
+      await Share.share(
+        '${widget.title}\n${widget.shareUrl}',
+        subject: widget.title,
+      );
+    } catch (_) {
+      _showSnack('分享失败');
+    }
   }
 
   Widget _channelButton({

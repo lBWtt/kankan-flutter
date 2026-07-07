@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/kk_colors.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/utils/file_download.dart';
 import '../../../core/widgets/code_diff_block.dart';
 import '../../../core/widgets/tappable.dart';
 import '../../../data/seed/mock_seed.dart';
@@ -151,12 +153,9 @@ class _TakeButtonState extends State<_TakeButton> {
         // 真复制到剪贴板
         await Clipboard.setData(ClipboardData(text: widget.source));
       } else {
-        // 真下载(简化:用 url_launcher 打开,浏览器处理下载)
-        // Phase 5 接 path_provider + dio 做真后台下载
-        final uri = Uri.tryParse(widget.source);
-        if (uri != null) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
+        // Phase 5：真后台下载（dio → 临时目录）+ toast。
+        // web 平台 path_provider 不可用，走 url_launcher 兜底（浏览器下载）。
+        await _downloadFile();
       }
       if (!mounted) return;
       setState(() => _done = true);
@@ -166,7 +165,41 @@ class _TakeButtonState extends State<_TakeButton> {
         if (mounted) setState(() => _done = false);
       });
     } catch (_) {
-      // 静默失败(Phase 5 加 toast)
+      // Phase 5：失败 toast（不再静默）。
+      if (mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          const SnackBar(
+            content: Text('下载失败，稍后再试'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 真下载：dio 流式下载到临时目录，成功 toast「已保存」。
+  /// web 无 path_provider → 退 url_launcher 让浏览器处理。
+  Future<void> _downloadFile() async {
+    final uri = Uri.tryParse(widget.source);
+    if (uri == null) return;
+    // web 兜底：浏览器原生下载。
+    if (kIsWeb) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    final savePath = await downloadUrlToFile(widget.source);
+    if (!mounted) return;
+    if (savePath != null) {
+      final name = savePath.split('/').last;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text('已保存到 $name'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      // 下载失败 → 退 url_launcher 让浏览器处理（best-effort）。
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 }
