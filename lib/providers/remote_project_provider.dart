@@ -12,3 +12,9 @@ final remoteProjectsProvider =
     FutureProvider.autoDispose<List<Project>>((ref) async {
   return ref.watch(projectsApiProvider).list(limit: 30);
 });
+
+/// TA 的作品（个人主页「项目」Tab，仅 published）。userId 是后端 UUID。
+final userProjectsProvider =
+    FutureProvider.autoDispose.family<List<Project>, String>((ref, userId) {
+  return ref.watch(projectsApiProvider).byUser(userId);
+});

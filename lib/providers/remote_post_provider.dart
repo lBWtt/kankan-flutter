@@ -18,6 +18,16 @@ final remotePostsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   return result.posts;
 });
 
+/// TA 的动态（个人主页「动态」Tab）。userId 是后端 UUID；加载后并「我已赞」点亮心。
+final userPostsProvider =
+    FutureProvider.autoDispose.family<List<Post>, String>((ref, userId) async {
+  final result = await ref.watch(postsApiProvider).byUser(userId);
+  if (result.likedIds.isNotEmpty) {
+    ref.read(appStateProvider.notifier).mergeLikedIds(result.likedIds);
+  }
+  return result.posts;
+});
+
 /// 按 id 取动态：先查 mock repo（命中=mock feed 的动态），miss 且 useRemote → 拉后端。
 /// 动态详情页用（AsyncValue：loading/error/data）。命中已赞则点亮心。
 final postByIdProvider =

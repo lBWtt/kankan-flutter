@@ -35,6 +35,28 @@ class ProjectsApi {
     }
   }
 
+  /// GET /users/{id}/projects → TA 的作品（仅 published，游客可读）。
+  /// 用于个人主页「项目」Tab 远程化；返回 Page 信封 {items:[...]}。
+  Future<List<Project>> byUser(String userId, {int limit = 30}) async {
+    try {
+      final resp = await _dio.get<dynamic>(
+        '/users/$userId/projects',
+        queryParameters: {'limit': limit},
+      );
+      final data = resp.data;
+      final Object? rawItems = data is Map<dynamic, dynamic>
+          ? (data['items'] ?? data['data'] ?? const <dynamic>[])
+          : (data ?? const <dynamic>[]);
+      final items = rawItems is List ? rawItems : const <dynamic>[];
+      return items
+          .whereType<Map<dynamic, dynamic>>()
+          .map((m) => projectFromCardJson(Map<String, dynamic>.from(m)))
+          .toList();
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
   /// POST /projects → 发布项目（需登录，走 v2 字段）。
   /// 成功返回后端 ProjectDetail 映射的 Project（含真 uuid）。
   /// 准入不过后端回 409 PUBLISH_GATE_FAILED；AppException 透出给 UI 提示。

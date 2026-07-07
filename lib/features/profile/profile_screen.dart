@@ -13,11 +13,14 @@ import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
+import '../../providers/remote_post_provider.dart';
+import '../../providers/remote_project_provider.dart';
 import '../../router/routes.dart';
 import '../shared/empty_state.dart';
 import '../shared/post_card.dart';
 import '../shared/profile_header.dart';
 import '../shared/project_card.dart';
+import '../shared/remote_error.dart';
 import '../shared/report_sheet.dart';
 
 /// 个人主页屏 — HANDOFF §6.5 真路由 + 三 Tab + 关注/拉黑/举报。
@@ -92,9 +95,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         );
       }
     }
-    final totalLikes =
+    var totalLikes =
         projects.fold<int>(0, (s, p) => s + p.likes) +
             posts.fold<int>(0, (s, p) => s + p.likes);
+    // Tab 计数:mock 用 byAuthor 长度;远程用户 mock 列表为空,改用真列表长度
+    // (家族 provider 同参数与 Tab 内共享缓存,不多打一次网络)。loading 退化 0。
+    var postCount = posts.length;
+    var projectCount = projects.length;
+    if (isRemoteUser) {
+      final rp = ref.watch(userPostsProvider(widget.userId)).value;
+      final rj = ref.watch(userProjectsProvider(widget.userId)).value;
+      if (rp != null) {
+        postCount = rp.length;
+        totalLikes += rp.fold<int>(0, (s, p) => s + p.likes);
+      }
+      if (rj != null) {
+        projectCount = rj.length;
+        totalLikes += rj.fold<int>(0, (s, p) => s + p.likes);
+      }
+    }
     final isFollowing = appState.followedUserIds.contains(widget.userId);
 
     return Scaffold(
@@ -139,7 +158,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           ),
           const SizedBox(height: KkSpacing.sm),
           // Tab 栏
-          _tabBar(projects.length, posts.length),
+          _tabBar(projectCount, postCount),
           // Tab 内容
           Expanded(
             child: TabBarView(
@@ -388,11 +407,29 @@ class _PostsTab extends ConsumerWidget {
   final String userId;
   const _PostsTab({required this.userId});
 
+  bool get _isRemote =>
+      AppConfig.useRemote && looksLikeBackendId(userId);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.watch(postRepositoryProvider);
-    final posts = repo.byAuthor(userId)
+    // 远程用户(UUID)→ GET /users/{id}/posts 三态;mock 用户→ byAuthor。
+    if (_isRemote) {
+      return ref.watch(userPostsProvider(userId)).when(
+            loading: () =>
+                const Center(child: CircularProgressIndicator(color: KkColors.teal)),
+            error: (e, _) => RemoteError(
+              message: '动态加载失败',
+              onRetry: () async => ref.invalidate(userPostsProvider(userId)),
+            ),
+            data: (posts) => _list(context, posts),
+          );
+    }
+    final posts = ref.watch(postRepositoryProvider).byAuthor(userId)
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    return _list(context, posts);
+  }
+
+  Widget _list(BuildContext context, List<Post> posts) {
     if (posts.isEmpty) {
       return ListView(
         children: const [EmptyState(variant: EmptyStateVariant.feed)],
@@ -416,11 +453,29 @@ class _ProjectsTab extends ConsumerWidget {
   final String userId;
   const _ProjectsTab({required this.userId});
 
+  bool get _isRemote =>
+      AppConfig.useRemote && looksLikeBackendId(userId);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.watch(projectRepositoryProvider);
-    final projects = repo.byAuthor(userId)
+    // 远程用户(UUID)→ GET /users/{id}/projects（仅 published）三态;mock→ byAuthor。
+    if (_isRemote) {
+      return ref.watch(userProjectsProvider(userId)).when(
+            loading: () =>
+                const Center(child: CircularProgressIndicator(color: KkColors.teal)),
+            error: (e, _) => RemoteError(
+              message: '作品加载失败',
+              onRetry: () async => ref.invalidate(userProjectsProvider(userId)),
+            ),
+            data: (projects) => _list(projects),
+          );
+    }
+    final projects = ref.watch(projectRepositoryProvider).byAuthor(userId)
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    return _list(projects);
+  }
+
+  Widget _list(List<Project> projects) {
     if (projects.isEmpty) {
       return ListView(
         children: const [EmptyState(variant: EmptyStateVariant.generic)],
@@ -451,12 +506,17 @@ class _SavedTab extends ConsumerWidget {
     final repo = ref.watch(projectRepositoryProvider);
     final appState = ref.watch(appStateProvider);
 
-    // 自己:从 appState.savedProjectIds 读真实收藏
-    // 他人:mock 假设展示该用户最近发的 2 个项目作为"收藏"
-    //   (真实场景后端查 savedProject 表,Phase 5 接 Drift)
+    // 他人收藏对外不可见(后端无「查他人 favorites」端点,隐私)——远程他人一律空态。
+    // 只有自己能看自己的收藏:从 appState.savedProjectIds ∩ 本地 repo。
+    //   (远程 UUID 收藏的项目卡不在 mock repo,那部分在此 Tab 仍显示不全——
+    //    见 me/library 已知缺口,需 /me/favorites 返回卡片后补;此处不 mock 伪造。)
+    final isRemoteOther =
+        !isMe && AppConfig.useRemote && looksLikeBackendId(userId);
     final saved = isMe
         ? repo.all().where((p) => appState.savedProjectIds.contains(p.id)).toList()
-        : repo.byAuthor(userId).take(2).toList();
+        : isRemoteOther
+            ? const <Project>[]
+            : repo.byAuthor(userId).take(2).toList();
 
     if (saved.isEmpty) {
       return ListView(
