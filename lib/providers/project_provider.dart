@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config/app_config.dart';
 import '../data/api/projects_api.dart';
+import '../data/remote_user_cache.dart';
 import '../domain/repositories/project_repository.dart';
 import '../domain/models/models.dart';
 
@@ -28,11 +29,11 @@ final projectByIdProvider =
   return null;
 });
 
-/// 作者 by ID(同步,从 repo 读)
+/// 作者 by ID(同步)。先查 mock repo;查不到再查远程用户缓存(feed/详情解析卡片时缓存的真作者)。
 final userByIdProvider =
     Provider.family<KkUser?, String>((ref, id) {
   final repo = ref.watch(projectRepositoryProvider);
-  return repo.userById(id);
+  return repo.userById(id) ?? remoteUserById(id);
 });
 
 /// 三 Tab 排序 provider(kankan 屏用)

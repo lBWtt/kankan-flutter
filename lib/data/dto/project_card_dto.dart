@@ -10,6 +10,35 @@
 //   - resultData 仅填封面 media；actions/io/repo 留空（详情级数据后续接详情端点）。
 import '../../core/config/app_config.dart';
 import '../../domain/models/models.dart';
+import '../remote_user_cache.dart';
+
+/// 解析后端 author(UserBrief){id,nickname,avatar_url} → 缓存成远程 KkUser + 返回 authorId。
+/// 前端 Project 只存 authorId，作者名/头像靠 userByIdProvider 查——缓存让远程作者也查得到。
+String _authorIdAndCache(dynamic author) {
+  if (author is! Map) return '';
+  final id = author['id']?.toString() ?? '';
+  if (id.isEmpty) return '';
+  final nickname = author['nickname']?.toString();
+  cacheRemoteUser(KkUser(
+    id: id,
+    name: (nickname != null && nickname.isNotEmpty) ? nickname : id,
+    avatar: author['avatar_url']?.toString(),
+  ));
+  return id;
+}
+
+/// 后端 counts.reactions{creative,big_brain,cool} 三项之和 = 前端「获赞/点赞」。
+int _likesFromCounts(dynamic counts) {
+  if (counts is! Map) return 0;
+  final r = counts['reactions'];
+  if (r is! Map) return 0;
+  int n(String k) {
+    final v = r[k];
+    return v is int ? v : int.tryParse('$v') ?? 0;
+  }
+
+  return n('creative') + n('big_brain') + n('cool');
+}
 
 /// 后端媒体 URL 可能是相对路径（/uploads/xxx.png，local 存储）。相对路径要拼上后端 origin
 /// 才能在浏览器显示（否则被当成前端同源 5599 解析）。绝对 URL（http/https）原样返回。
@@ -89,20 +118,19 @@ Project projectFromDetailJson(Map<String, dynamic> j) {
   final tools = (j['tools'] is List)
       ? (j['tools'] as List).map((e) => e.toString()).toList()
       : const <String>[];
-  final author = j['author'];
   final counts = j['counts'];
   final takeaway = counts is Map ? counts['takeaways'] : j['takeaway_count'];
   return Project(
     id: j['id'].toString(),
     title: (j['title'] ?? '').toString(),
     summary: (j['tagline'] ?? j['subtitle'] ?? '').toString(),
-    authorId: author is Map ? (author['id']?.toString() ?? '') : '',
+    authorId: _authorIdAndCache(j['author']),
     resultData: ResultData(media: media),
     actions: const [], // 后端 actions 结构与前端 sealed ActionItem 不同,暂不映射
     tags: tools,
     authorNote: (j['intro'] ?? j['description'])?.toString(),
     domain: _mapDomain(j['category']?.toString()),
-    likes: 0,
+    likes: _likesFromCounts(counts),
     commentCount: 0,
     takeawayCount: takeaway is int ? takeaway : int.tryParse('$takeaway') ?? 0,
     createdAtMs: _parseMs(j['published_at']),
@@ -120,17 +148,18 @@ Project projectFromCardJson(Map<String, dynamic> j) {
       ? (j['tools'] as List).map((e) => e.toString()).toList()
       : const <String>[];
 
-  final takeaway = j['takeaway_count'];
+  final counts = j['counts'];
+  final takeaway = counts is Map ? counts['takeaways'] : j['takeaway_count'];
   return Project(
     id: j['id'].toString(),
     title: (j['title'] ?? '').toString(),
     summary: (j['tagline'] ?? j['subtitle'] ?? j['intro'] ?? '').toString(),
-    authorId: '', // 后端卡片不展开作者；真数据模式下调用方隐藏作者行
+    authorId: _authorIdAndCache(j['author']), // 后端已填 author(UserBrief)→缓存+authorId
     resultData: ResultData(media: media),
     actions: const [],
     tags: tools,
     domain: _mapDomain(j['category']?.toString()),
-    likes: 0,
+    likes: _likesFromCounts(counts),
     commentCount: 0,
     takeawayCount: takeaway is int ? takeaway : int.tryParse('$takeaway') ?? 0,
     createdAtMs: _parseMs(j['published_at']),

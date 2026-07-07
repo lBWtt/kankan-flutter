@@ -202,14 +202,18 @@ class AppStateNotifier extends Notifier<AppStateData> {
       final was = prev?.isLoggedIn ?? false;
       if (!was && next.isLoggedIn) {
         _loadFavoritesFromBackend();
+        _loadFollowingFromBackend(next.currentUser?.id);
       } else if (was && !next.isLoggedIn) {
         _dropBackendFavorites();
+        _dropBackendFollows();
       }
     });
     // 恢复的登录态（web 刷新后 auth 从 prefs 恢复）：ref.listen 不会为初始值触发，
-    // 这里主动拉一次后端收藏，让收藏心亮回来。
-    if (ref.read(authProvider).isLoggedIn) {
+    // 这里主动拉一次后端收藏/关注，让收藏心/关注态亮回来。
+    final restored = ref.read(authProvider);
+    if (restored.isLoggedIn) {
       _loadFavoritesFromBackend();
+      _loadFollowingFromBackend(restored.currentUser?.id);
     }
     return AppStateData.initial();
   }
@@ -233,6 +237,29 @@ class AppStateNotifier extends Notifier<AppStateData> {
         .toSet();
     if (next.length != state.savedProjectIds.length) {
       state = state.copyWith(savedProjectIds: next);
+    }
+  }
+
+  /// 登录后拉「我关注的人」并入 followedUserIds(关注按钮显真态)。失败静默。
+  Future<void> _loadFollowingFromBackend(String? myId) async {
+    if (myId == null || !looksLikeBackendId(myId)) return;
+    try {
+      final ids = await ref.read(interactionsApiProvider).listFollowingIds(myId);
+      if (ids.isEmpty) return;
+      final next = Set<String>.from(state.followedUserIds)..addAll(ids);
+      state = state.copyWith(followedUserIds: next);
+    } catch (_) {
+      // 拉取失败:保持现状
+    }
+  }
+
+  /// 登出:从 followedUserIds 移除后端用户(UUID),保留 mock 演示关注(短 id)。
+  void _dropBackendFollows() {
+    final next = state.followedUserIds
+        .where((id) => !looksLikeBackendId(id))
+        .toSet();
+    if (next.length != state.followedUserIds.length) {
+      state = state.copyWith(followedUserIds: next);
     }
   }
 
@@ -312,9 +339,33 @@ class AppStateNotifier extends Notifier<AppStateData> {
       state.followedUserIds.contains(userId);
 
   void toggleFollow(String userId) {
+    final wasFollowing = state.followedUserIds.contains(userId);
     final next = Set<String>.from(state.followedUserIds);
-    if (!next.add(userId)) next.remove(userId);
-    state = state.copyWith(followedUserIds: next);
+    if (wasFollowing) {
+      next.remove(userId);
+    } else {
+      next.add(userId);
+    }
+    state = state.copyWith(followedUserIds: next); // 乐观更新
+    _syncFollow(userId, on: !wasFollowing);
+  }
+
+  /// 关注落库:登录 + 真后端用户(UUID)才发请求;失败回滚本地保持一致。
+  /// mock 用户(短 id 如 'chen')本地即真源,不碰后端。
+  Future<void> _syncFollow(String userId, {required bool on}) async {
+    if (!ref.read(authProvider).isLoggedIn) return;
+    if (!looksLikeBackendId(userId)) return;
+    try {
+      await ref.read(interactionsApiProvider).setFollow(userId, on);
+    } catch (_) {
+      final revert = Set<String>.from(state.followedUserIds);
+      if (on) {
+        revert.remove(userId);
+      } else {
+        revert.add(userId);
+      }
+      state = state.copyWith(followedUserIds: revert);
+    }
   }
 
   // ── 我拿走的(HANDOFF §6.3)──

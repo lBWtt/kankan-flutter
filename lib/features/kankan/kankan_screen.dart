@@ -305,8 +305,8 @@ class _ProjectList extends ConsumerWidget {
             children: const [EmptyState(variant: EmptyStateVariant.generic)],
           );
         }
-        // 真数据卡片隐藏作者行(后端卡片不展开作者)。
-        return _cardListView(list, showAuthor: false);
+        // 真数据卡片现在带真作者(后端卡片已填 author，DTO 缓存进 userByIdProvider)。
+        return _cardListView(list, showAuthor: true);
       },
     );
   }

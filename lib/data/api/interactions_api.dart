@@ -62,6 +62,37 @@ class InteractionsApi {
     }
   }
 
+  /// 关注 / 取关。[on]=true → POST（201）；false → DELETE（204）。需登录（auth_required）。
+  Future<void> setFollow(String userId, bool on) async {
+    try {
+      if (on) {
+        await _dio.post<dynamic>('/users/$userId/follow');
+      } else {
+        await _dio.delete<dynamic>('/users/$userId/follow');
+      }
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
+  /// GET /users/{userId}/following → ta 关注的人 id 列表（登录后回填自己的关注态）。
+  Future<List<String>> listFollowingIds(String userId) async {
+    try {
+      final resp = await _dio.get<dynamic>('/users/$userId/following');
+      final data = resp.data;
+      final raw =
+          data is Map ? (data['items'] ?? const <dynamic>[]) : (data ?? const <dynamic>[]);
+      final items = raw is List ? raw : const <dynamic>[];
+      return items
+          .whereType<Map<dynamic, dynamic>>()
+          .map((m) => m['id']?.toString())
+          .whereType<String>()
+          .toList();
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
   /// GET /me/favorites → 我收藏过的项目 id 列表（读通路：登录后回填收藏态）。
   /// 后端返回 {items:[ProjectCard...]}，这里只取 id（够点亮收藏心；卡片本身用不上）。
   Future<List<String>> listFavoriteIds() async {
