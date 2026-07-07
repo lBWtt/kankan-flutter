@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/utils/backend_id.dart';
 import '../data/api/interactions_api.dart';
+import '../data/api/posts_api.dart';
 import '../data/seed/mock_seed.dart';
 import '../domain/models/models.dart';
 import 'auth_provider.dart';
@@ -297,6 +298,45 @@ class AppStateNotifier extends Notifier<AppStateData> {
     final next = Set<String>.from(state.likedItemIds);
     if (!next.add(id)) next.remove(id);
     state = state.copyWith(likedItemIds: next);
+  }
+
+  /// 动态点赞（双轨）：乐观 toggle likedItemIds；登录 + 真后端动态(UUID)→ 同步后端、失败回滚。
+  /// mock 动态(短 id)本地即真源。post_card/post_detail 的点赞按钮走这个（不走 toggleLike）。
+  void togglePostLike(String postId) {
+    final wasLiked = state.likedItemIds.contains(postId);
+    final next = Set<String>.from(state.likedItemIds);
+    if (wasLiked) {
+      next.remove(postId);
+    } else {
+      next.add(postId);
+    }
+    state = state.copyWith(likedItemIds: next);
+    _syncPostLike(postId, on: !wasLiked);
+  }
+
+  Future<void> _syncPostLike(String postId, {required bool on}) async {
+    if (!ref.read(authProvider).isLoggedIn) return;
+    if (!looksLikeBackendId(postId)) return;
+    try {
+      await ref.read(postsApiProvider).setLike(postId, on);
+    } catch (_) {
+      final revert = Set<String>.from(state.likedItemIds);
+      if (on) {
+        revert.remove(postId);
+      } else {
+        revert.add(postId);
+      }
+      state = state.copyWith(likedItemIds: revert);
+    }
+  }
+
+  /// 把后端返回「我已赞」的 id 并入 likedItemIds（远程动态流/详情加载后点亮心）。
+  void mergeLikedIds(Set<String> ids) {
+    if (ids.isEmpty) return;
+    final next = Set<String>.from(state.likedItemIds)..addAll(ids);
+    if (next.length != state.likedItemIds.length) {
+      state = state.copyWith(likedItemIds: next);
+    }
   }
 
   // ── 收藏 ──

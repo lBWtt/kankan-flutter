@@ -1,17 +1,23 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/network/app_exception.dart';
 import '../../core/prefs.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/tappable.dart';
+import '../../data/api/media_api.dart';
+import '../../data/api/posts_api.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/remote_post_provider.dart';
 import '../../router/routes.dart';
 
 /// 任务⑭ 发动态 compose 屏 — 朋友圈发布器样式。
@@ -38,6 +44,7 @@ class ComposeScreen extends ConsumerStatefulWidget {
 class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   final _contentCtrl = TextEditingController();
   final List<MediaItem> _media = [];
+  final Map<String, Uint8List> _mediaBytes = {}; // url→bytes（远程发布真上传用）
   final List<String> _tags = [];
   String? _quoteProjectId;
 
@@ -123,12 +130,33 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     return text.isNotEmpty || _media.isNotEmpty;
   }
 
-  void _send() {
+  Future<void> _send() async {
     final text = _contentCtrl.text.trim();
     if (text.isEmpty && _media.isEmpty) {
       _toast('写点什么再发');
       return;
     }
+
+    // 登录 → 真发后端（POST /posts，先上传图拿 media_ids）；未登录/失败 → 本地 mock。
+    if (ref.read(authProvider).isLoggedIn) {
+      try {
+        final mediaIds = await _uploadMedia();
+        await ref.read(postsApiProvider).create({
+          'content': text.isEmpty ? ' ' : text,
+          'tags': _tags,
+          if (_quoteProjectId != null) 'quote_project_id': _quoteProjectId,
+          if (mediaIds.isNotEmpty) 'media_ids': mediaIds,
+        });
+        if (!mounted) return;
+        ref.invalidate(remotePostsProvider); // 动态流刷新看到新动态
+        _finish('已发送到「看看」');
+        return;
+      } on AppException catch (e) {
+        if (mounted) _toast('后端未同步（${e.message}），已本地发布');
+        // 落到本地发布
+      }
+    }
+
     final now = DateTime.now().millisecondsSinceEpoch;
     final post = Post(
       id: 'user_post_$now',
@@ -144,10 +172,28 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     ref.read(postRepositoryProvider).addPost(post);
     // 让依赖 postRepositoryProvider 的屏(discover 推荐/关注/profile 动态)刷新
     ref.invalidate(postRepositoryProvider);
-    // 任务 A:成功发送后清草稿 key(已发的不当草稿弹)+ 标记 _sent(dispose 不再存)。
+    _finish('已发送');
+  }
+
+  /// 上传图片拿 media_ids（best-effort：某张失败跳过，不挡发布）。
+  Future<List<String>> _uploadMedia() async {
+    final api = ref.read(mediaApiProvider);
+    final ids = <String>[];
+    for (final m in _media) {
+      final bytes = _mediaBytes[m.url];
+      if (bytes == null) continue;
+      try {
+        ids.add(await api.upload(bytes));
+      } catch (_) {}
+    }
+    return ids;
+  }
+
+  /// 收尾:清草稿 + 标记已发 + toast + 关屏。
+  void _finish(String msg) {
     ref.read(prefsProvider).remove(PrefsKeys.draftCompose);
     _sent = true;
-    _toast('已发送');
+    _toast(msg);
     _close();
   }
 
@@ -179,14 +225,17 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     try {
       final files = await picker.pickMultiImage(imageQuality: 85);
       if (files.isEmpty) return;
+      // 读真字节缓存起来（远程发布时真上传后端；web 上传靠它）。
+      final picked = <(MediaItem, Uint8List)>[];
+      for (final f in files) {
+        if (_media.length + picked.length >= 9) break;
+        picked.add((MediaItem(type: 'image', url: f.path, alt: '本地图片'), await f.readAsBytes()));
+      }
+      if (!mounted) return;
       setState(() {
-        for (final f in files) {
-          if (_media.length >= 9) break;
-          _media.add(MediaItem(
-            type: 'image',
-            url: f.path, // Phase 2 本地路径;Phase 5 上传后换 URL
-            alt: '本地图片',
-          ));
+        for (final (item, bytes) in picked) {
+          _media.add(item);
+          _mediaBytes[item.url] = bytes;
         }
       });
     } catch (_) {

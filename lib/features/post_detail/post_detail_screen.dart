@@ -13,6 +13,7 @@ import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
+import '../../providers/remote_post_provider.dart';
 import '../../router/routes.dart';
 import '../shared/avatar.dart';
 import '../shared/comment_thread.dart';
@@ -50,13 +51,20 @@ class PostDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.watch(postRepositoryProvider);
-    final post = repo.byId(postId);
-
+    // mock 优先 + 远程兜底（真数据模式下 uuid 动态从后端拉）。
+    final postAsync = ref.watch(postByIdProvider(postId));
+    final post = postAsync.value;
     return Scaffold(
       backgroundColor: KkColors.bg,
       appBar: _appBar(context, ref, post),
-      body: post == null ? _notFound(context) : _body(context, ref, post),
+      body: postAsync.isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(KkColors.teal),
+              ),
+            )
+          : (post == null ? _notFound(context) : _body(context, ref, post)),
     );
   }
 
@@ -247,7 +255,7 @@ class PostDetailScreen extends ConsumerWidget {
                   horizontal: KkSpacing.xs,
                 ),
                 onTap: () =>
-                    ref.read(appStateProvider.notifier).toggleLike(post.id),
+                    ref.read(appStateProvider.notifier).togglePostLike(post.id),
               ),
               const SizedBox(width: KkSpacing.lg),
               _IconStat(

@@ -154,7 +154,7 @@ class PostCard extends ConsumerWidget {
                 ),
                 onTap: () => ref
                     .read(appStateProvider.notifier)
-                    .toggleLike(post.id),
+                    .togglePostLike(post.id),
               ),
               const SizedBox(width: KkSpacing.lg),
               _IconStat(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/skeletons.dart';
@@ -9,6 +10,8 @@ import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/search_repository.dart';
+import '../../providers/remote_post_provider.dart';
+import '../shared/remote_error.dart';
 import '../../providers/app_state_provider.dart';
 import '../../router/routes.dart';
 import '../shared/comment_bottom_sheet.dart';
@@ -175,21 +178,53 @@ class _RecommendFeed extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.watch(postRepositoryProvider);
-    // 任务⑫:渲染前过滤掉「不感兴趣」的动态(负反馈闭环)。
-    final ni = ref.watch(appStateProvider).notInterestedIds;
-    // F-36:all() 已返回可变副本(F-36 改 List.of),可直接 sort。
-    // 原 `repo.all()..sort()` 在 all() 返回 List.unmodifiable 时会运行时崩
-    // (UnsupportedError: Cannot modify an unmodifiable list)。
-    final posts = repo
-        .all()
-        .where((p) => !ni.contains(p.id))
-        .toList()
-      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
-
     // 任务⑬:推荐流顶部「今日话题」横条(话题空则不渲染,零旁白)。
     final topics = ref.watch(searchRepositoryProvider).topTopics(limit: 8);
 
+    final Widget feed;
+    if (AppConfig.useRemote) {
+      // 真数据:动态流读 GET /posts（AsyncValue：loading→骨架/错误→重试/data→列表）。
+      final async = ref.watch(remotePostsProvider);
+      feed = async.when(
+        loading: () => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(KkSpacing.xxl),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(KkColors.teal),
+            ),
+          ),
+        ),
+        error: (e, _) => RemoteError(
+          message: '动态加载失败',
+          onRetry: () async => ref.invalidate(remotePostsProvider),
+        ),
+        data: (posts) => _refreshableList(context, ref, _filtered(ref, posts), remote: true),
+      );
+    } else {
+      final posts = _filtered(ref, ref.watch(postRepositoryProvider).all());
+      feed = _refreshableList(context, ref, posts, remote: false);
+    }
+
+    if (topics.isEmpty) return feed;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _TodayTopicStrip(topics: topics),
+        Expanded(child: feed),
+      ],
+    );
+  }
+
+  /// 过滤「不感兴趣」+ 按时间倒序（mock/remote 通用）。
+  List<Post> _filtered(WidgetRef ref, List<Post> src) {
+    final ni = ref.watch(appStateProvider).notInterestedIds;
+    return src.where((p) => !ni.contains(p.id)).toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+  }
+
+  Widget _refreshableList(BuildContext context, WidgetRef ref, List<Post> posts,
+      {required bool remote}) {
     final list = posts.isEmpty
         ? ListView(
             children: const [EmptyState(variant: EmptyStateVariant.feed)],
@@ -206,27 +241,19 @@ class _RecommendFeed extends ConsumerWidget {
               );
             },
           );
-
-    // 任务①:下拉刷新——invalidate post + search repo,今日话题也跟着重拉。
-    //   postRepositoryProvider 是同步 repo(无 .future),用短延迟让指示器可见。
-    //   空态 ListView 也可下拉(RefreshIndicator 只要求 child 是 ScrollView)。
-    final feed = RefreshIndicator(
+    return RefreshIndicator(
       color: KkColors.teal,
       onRefresh: () async {
-        ref.invalidate(postRepositoryProvider);
-        ref.invalidate(searchRepositoryProvider);
-        await Future<void>.delayed(const Duration(milliseconds: 400));
+        if (remote) {
+          ref.invalidate(remotePostsProvider);
+          await ref.read(remotePostsProvider.future);
+        } else {
+          ref.invalidate(postRepositoryProvider);
+          ref.invalidate(searchRepositoryProvider);
+          await Future<void>.delayed(const Duration(milliseconds: 400));
+        }
       },
       child: list,
-    );
-
-    if (topics.isEmpty) return feed;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _TodayTopicStrip(topics: topics),
-        Expanded(child: feed),
-      ],
     );
   }
 
