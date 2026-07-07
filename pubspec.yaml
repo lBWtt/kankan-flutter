@@ -51,6 +51,15 @@ dependencies:
   path_provider: ^2.1.4
   path: ^1.9.0
 
+  # ── Phase 5:真分享(share_plus)── 分享链接/海报图到系统分享面板(可存相册)。
+  # share_plus 10.x 兼容 Flutter >=3.10。Share.share(文本) / Share.shareXFiles(文件)。
+  share_plus: ^10.1.0
+
+  # ── Phase 5:真语法高亮(flutter_highlight)── HowAction 工作流代码块按语言着色。
+  # flutter_highlight 0.7.x 依赖 highlight(pure Dart tokenizer)，兼容 Flutter >=1.17。
+  # HighlightView(code, language, theme) 即用；主题 atom-one-dark 与项目暗代码区协调。
+  flutter_highlight: ^0.7.0
+
   # ── 真二维码(分享海报扫码打开)──
   # 任务⑧:替换 share_sheet 的 _QrPlaceholderPainter(画得像但编码不了 URL)。
   # qr_flutter 4.1.0 兼容 Flutter >=3.10.0(本项目 >=3.24.0,OK)。

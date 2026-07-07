@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_highlight/flutter_highlight.dart';
 
 import '../theme/kk_colors.dart';
 import '../theme/tokens.dart';
@@ -10,11 +11,10 @@ import '../theme/tokens.dart';
 /// 用途:HowAction 跳转工作流详情页时,渲染 before/after 代码对比。
 ///
 /// 设计:
-///   - 不引入 highlight.js / flutter_highlight(Phase 5 再接真语法高亮)
-///   - 简单 tokenizer:按行分割,前缀 `+` 表示 added,`-` 表示 removed,
-///     其他不变(无背景)
-///   - before/after 都给时,用 O(n*m) LCS 算法按行精确匹配算 diff
-///   - 只给 after 时,全部标 unchanged(无 diff 高亮)
+///   - Phase 5 接 flutter_highlight 真语法高亮（只给 after 无 diff 时启用）
+///   - before+after 都给时,用 O(n*m) LCS 算法按行精确匹配算 diff
+///     （diff 行的 +/- 着色优先于语法高亮，保留 diff 语义）
+///   - 只给 after 时,用 HighlightView 按语言真语法高亮（keyword/string/...）
 ///   - 顶部 bar:标题(KkType.body 加粗)+ 语言标签(KkType.mono t3,
 ///     圆角 sm,bgSubtle 底)
 ///   - 代码区:JetBrainsMono,size 12,行高 1.5
@@ -123,6 +123,23 @@ class CodeDiffBlock extends StatelessWidget {
         child: Text(
           '(空)',
           style: KkType.mono.copyWith(fontSize: 12, color: KkColors.t4),
+        ),
+      );
+    }
+    // Phase 5：无 diff（只给 after，无 before）→ flutter_highlight 真语法高亮。
+    final hasDiff = before != null && before!.isNotEmpty;
+    if (!hasDiff) {
+      return Padding(
+        padding: const EdgeInsets.all(KkSpacing.md),
+        child: HighlightView(
+          after,
+          language: language ?? 'dart',
+          theme: _kkCodeTheme,
+          textStyle: const TextStyle(
+            fontFamily: 'JetBrainsMono',
+            fontSize: 12,
+            height: 1.5,
+          ),
         ),
       );
     }
@@ -295,3 +312,27 @@ class _DiffLineRow extends StatelessWidget {
     };
   }
 }
+
+/// Phase 5：flutter_highlight 自定义浅色主题（与项目配色协调）。
+/// key 对应 highlight.js CSS class（keyword/string/comment/number/...）。
+/// 用自定义 map 而非 import 主题文件，避免主题文件名不确定性。
+const _kkCodeTheme = {
+  'root': TextStyle(color: KkColors.t1, backgroundColor: Color(0x00000000)),
+  'keyword': TextStyle(color: KkColors.tealDark, fontWeight: FontWeight.w600),
+  'built_in': TextStyle(color: KkColors.tealDark),
+  'string': TextStyle(color: KkColors.coralDark),
+  'attr': TextStyle(color: KkColors.coralDark),
+  'comment': TextStyle(color: KkColors.t4, fontStyle: FontStyle.italic),
+  'number': TextStyle(color: KkColors.tealDark),
+  'literal': TextStyle(color: KkColors.tealDark),
+  'function': TextStyle(color: KkColors.tealDark, fontWeight: FontWeight.w600),
+  'title': TextStyle(color: KkColors.tealDark, fontWeight: FontWeight.w600),
+  'class': TextStyle(color: KkColors.tealDark, fontWeight: FontWeight.w600),
+  'type': TextStyle(color: KkColors.tealDark),
+  'params': TextStyle(color: KkColors.t1),
+  'variable': TextStyle(color: KkColors.t1),
+  'meta': TextStyle(color: KkColors.t3),
+  'tag': TextStyle(color: KkColors.tealDark),
+  'symbol': TextStyle(color: KkColors.coralDark),
+  'regexp': TextStyle(color: KkColors.coralDark),
+};
