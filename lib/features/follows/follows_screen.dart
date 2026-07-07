@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/pagination/infinite_scroll.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/backend_id.dart';
@@ -12,6 +13,7 @@ import '../../core/widgets/tappable.dart';
 import '../../data/api/users_api.dart';
 import '../../domain/models/models.dart';
 import '../../providers/app_state_provider.dart';
+import '../../providers/paginated_follows_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
 import '../shared/avatar.dart';
@@ -27,10 +29,12 @@ import '../shared/remote_error.dart';
 /// N 取真实长度,无虚构放大公式(Web 版重灾区,Flutter 端从零做对)。
 ///
 /// 数据源策略(与 kankan _ProjectList 同套路):
-///   - useRemote + 真后端 id(UUID) → 真接口,AsyncValue 三态(loading→骨架 /
-///     error→RemoteError 重试 / data→列表)。下拉刷新 invalidate provider 重拉。
+///   - useRemote + 真后端 id(UUID) → 真接口,游标分页 + 无限滚动(P0-1 收口)。
+///     Tab 计数从 remoteUserPublicProvider(后端聚合 follower/following_count,真总数)
+///     取,避免分页后 items.length 只显首页数。
 ///   - mock(短 id 'chen' 或 'me') → 内存 user.followingIds/followerIds,
-///     保留原 300ms 假 loading 骨架(与 discover/kankan/library mock 分支一致)。
+///     paginated provider 的 mock 分支 Page.last 一次性返回(hasMore=false,
+///     InfiniteScroll 自然不触发 loadMore),保留原 300ms 假 loading 骨架。
 ///
 /// 行内布局:TappableAvatar(40px) + 名字/简介 + 关注按钮。
 /// 行整体 Tappable → push /u/:rowUserId。关注按钮独立 Tappable → toggleFollow
@@ -59,7 +63,7 @@ class _FollowsScreenState extends ConsumerState<FollowsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
   // mock 分支:300ms 假 loading 骨架(与 discover/kankan/library mock 一致)。
-  // remote 分支用 AsyncValue 自带 loading,不用这个旗。
+  // remote 分支用 PaginatedState.isLoading,不用这个旗。
   bool _mockLoading = true;
 
   @override
@@ -71,7 +75,7 @@ class _FollowsScreenState extends ConsumerState<FollowsScreen>
       // 'followers' → 第二个 Tab(index 1);其他默认 'following'(index 0)。
       initialIndex: widget.initialTab == 'followers' ? 1 : 0,
     );
-    // mock 分支才需要假 loading;remote 分支 AsyncValue 自带 loading,跳过。
+    // mock 分支才需要假 loading;remote 分支 PaginatedState.isLoading 兜底,跳过。
     if (!_isRemote) {
       Future.delayed(const Duration(milliseconds: 300), () {
         if (!mounted) return;
@@ -92,51 +96,40 @@ class _FollowsScreenState extends ConsumerState<FollowsScreen>
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(userByIdProvider(widget.userId));
-    // 远程:tab 计数从 followers/following 列表的 .length 取(真接口结果)。
-    // mock:tab 计数从 user.followingIds/followerIds 取(真实数组长度)。
-    final mockFollowingIds = user?.followingIds ?? const <String>[];
-    final mockFollowerIds = user?.followerIds ?? const <String>[];
-
+    // Tab 计数:
+    //   - remote:remoteUserPublicProvider 拉的 follower_count/following_count
+    //     (后端聚合真总数,不随分页首页数变化)。
+    //   - mock:user.followerIds/followingIds 真实数组长度。
+    // 两种都避免「分页后 Tab 计数只显首页数」的回归。
     final isRemote = _isRemote;
-    // remote 分支才 watch 真接口 provider(避免 mock 模式误触发后端请求)。
-    // isRemote 对一个 widget 实例是常量(取决于 compile-time useRemote + widget.userId),
-    // 条件 watch 不会导致依赖不一致。
-    final followingAsync = isRemote
-        ? ref.watch(remoteFollowingProvider(widget.userId))
-        : null;
-    final followersAsync = isRemote
-        ? ref.watch(remoteFollowersProvider(widget.userId))
-        : null;
+    final userPublicAsync =
+        isRemote ? ref.watch(remoteUserPublicProvider(widget.userId)) : null;
+    final followingCount = isRemote
+        ? (userPublicAsync?.value?.followingCount ??
+            user?.followingIds.length ??
+            0)
+        : (user?.followingIds.length ?? 0);
+    final followerCount = isRemote
+        ? (userPublicAsync?.value?.followerCount ??
+            user?.followerIds.length ??
+            0)
+        : (user?.followerIds.length ?? 0);
 
-    // valueOrNull:loading 时 null → 退化 mock 计数占位;data 时真长度。
-    final followingCount =
-        followingAsync?.value?.length ?? mockFollowingIds.length;
-    final followerCount =
-        followersAsync?.value?.length ?? mockFollowerIds.length;
-
-    // Tab 内容:remote → _RemoteFollowList(AsyncValue 三态);mock → _FollowList。
-    final followingTab = isRemote
-        ? _RemoteFollowList(
-            async: followingAsync!,
-            emptyTitle: '还没有关注的人',
-            onRetry: () async =>
-                ref.invalidate(remoteFollowingProvider(widget.userId)),
-          )
-        : _FollowList(
-            userIds: mockFollowingIds,
-            emptyTitle: '还没有关注的人',
-          );
-    final followersTab = isRemote
-        ? _RemoteFollowList(
-            async: followersAsync!,
-            emptyTitle: '还没有粉丝',
-            onRetry: () async =>
-                ref.invalidate(remoteFollowersProvider(widget.userId)),
-          )
-        : _FollowList(
-            userIds: mockFollowerIds,
-            emptyTitle: '还没有粉丝',
-          );
+    // Tab 内容:两 Tab 都用 _PaginatedFollowList(mock/remote 统一)。
+    // remote 模式:游标分页 + 无限滚动;
+    // mock 模式:Page.last 一次性返回,InfiniteScroll 不触发。
+    final followingTab = _PaginatedFollowList(
+      userId: widget.userId,
+      followers: false,
+      emptyTitle: '还没有关注的人',
+      emptyVariant: EmptyStateVariant.followers,
+    );
+    final followersTab = _PaginatedFollowList(
+      userId: widget.userId,
+      followers: true,
+      emptyTitle: '还没有粉丝',
+      emptyVariant: EmptyStateVariant.followers,
+    );
 
     return Scaffold(
       backgroundColor: KkColors.bg,
@@ -157,7 +150,7 @@ class _FollowsScreenState extends ConsumerState<FollowsScreen>
       body: Column(
         children: [
           // mock loading 时锁 TabBar 避免误触;remote 分支 _mockLoading 永远 true
-          // (initState 跳过假 loading),但 remote 用 AsyncValue 自带 loading,不锁。
+          // (initState 跳过假 loading),但 remote 用 PaginatedState.isLoading,不锁。
           IgnorePointer(
             ignoring: !isRemote && _mockLoading,
             child: _tabBar(followingCount, followerCount),
@@ -255,50 +248,130 @@ class _SkeletonFollowRow extends StatelessWidget {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// 远程列表(AsyncValue 三态:loading→骨架 / error→RemoteError 重试 / data→列表)
+// 分页列表(P0-1 收口:PaginatedState 三态 + 无限滚动)
+//
+// 替代原 _RemoteFollowList(AsyncValue) + _FollowList(mock userIds)双轨:
+//   - mock:paginatedXxxProvider 的 mock 分支 Page.last 一次性返回(hasMore=false),
+//     InfiniteScroll 不触发 loadMore,行为与原 _FollowList 一致。
+//   - remote:游标分页 + 无限滚动 + 去重 + 防重入(PaginatedNotifier 基类提供)。
 // ──────────────────────────────────────────────────────────────────
 
-class _RemoteFollowList extends StatelessWidget {
-  final AsyncValue<List<KkUser>> async;
-  final String emptyTitle;
-  final Future<void> Function() onRetry;
+class _PaginatedFollowList extends ConsumerStatefulWidget {
+  final String userId;
 
-  const _RemoteFollowList({
-    required this.async,
+  /// true = followers(粉丝),false = following(关注)。
+  final bool followers;
+  final String emptyTitle;
+  final EmptyStateVariant emptyVariant;
+
+  const _PaginatedFollowList({
+    required this.userId,
+    required this.followers,
     required this.emptyTitle,
-    required this.onRetry,
+    required this.emptyVariant,
   });
 
   @override
+  ConsumerState<_PaginatedFollowList> createState() =>
+      _PaginatedFollowListState();
+}
+
+class _PaginatedFollowListState extends ConsumerState<_PaginatedFollowList> {
+  late final ScrollController _scrollCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl = ScrollController();
+    InfiniteScroll.attach(_scrollCtrl, onLoadMore: () {
+      // hasMore=false 时 Notifier.loadMore no-op(mock + remote 末页)。
+      if (widget.followers) {
+        ref
+            .read(paginatedFollowersProvider(widget.userId).notifier)
+            .loadMore();
+      } else {
+        ref
+            .read(paginatedFollowingProvider(widget.userId).notifier)
+            .loadMore();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return async.when(
-      loading: () => _SkeletonFollowList(),
-      error: (_, __) => RemoteError(
+    final state = widget.followers
+        ? ref.watch(paginatedFollowersProvider(widget.userId))
+        : ref.watch(paginatedFollowingProvider(widget.userId));
+
+    if (state.isLoading) {
+      return const _SkeletonFollowList();
+    }
+    if (state.error != null && state.items.isEmpty) {
+      // 首屏加载失败:RemoteError 重试 → refresh。
+      return RemoteError(
         message: '加载失败',
-        onRetry: onRetry,
-      ),
-      data: (users) {
-        if (users.isEmpty) {
-          // 零旁白:空状态只一行事实(followers variant:people_outline + 「还没关注」)。
-          return ListView(
-            children: [
-              EmptyState(
-                variant: EmptyStateVariant.followers,
-                title: emptyTitle,
-              ),
-            ],
-          );
+        onRetry: () async {
+          if (widget.followers) {
+            await ref
+                .read(paginatedFollowersProvider(widget.userId).notifier)
+                .refresh();
+          } else {
+            await ref
+                .read(paginatedFollowingProvider(widget.userId).notifier)
+                .refresh();
+          }
+        },
+      );
+    }
+    if (state.items.isEmpty) {
+      // 零旁白:空状态只一行事实(followers variant:people_outline + 「还没关注」)。
+      return ListView(
+        children: [
+          EmptyState(
+            variant: widget.emptyVariant,
+            title: widget.emptyTitle,
+          ),
+        ],
+      );
+    }
+
+    // KkUser 已在 UsersApi._parseUsers 里 cacheRemoteUser(或 mock userByIdProvider),
+    // _FollowRow watch userByIdProvider 能查到。传 id 复用 mock/remote 同款行。
+    final users = state.items;
+    final list = ListView.separated(
+      controller: _scrollCtrl,
+      padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
+      // +1:底部加载指示器(追加加载时显示)。
+      itemCount: users.length + 1,
+      separatorBuilder: (_, __) =>
+          const Divider(height: 1, color: KkColors.divider, indent: 72),
+      itemBuilder: (context, i) {
+        if (i == users.length) {
+          return LoadMoreIndicator(enabled: state.isLoadingMore);
         }
-        // KkUser 已在 UsersApi._parseUserList 里 cacheRemoteUser,
-        // _FollowRow watch userByIdProvider 能查到。传 id 复用 mock 分支同款行。
-        return ListView.separated(
-          padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
-          itemCount: users.length,
-          separatorBuilder: (_, __) =>
-              const Divider(height: 1, color: KkColors.divider, indent: 72),
-          itemBuilder: (context, i) => _FollowRow(userId: users[i].id),
-        );
+        return _FollowRow(userId: users[i].id);
       },
+    );
+    return RefreshIndicator(
+      color: KkColors.teal,
+      onRefresh: () async {
+        if (widget.followers) {
+          await ref
+              .read(paginatedFollowersProvider(widget.userId).notifier)
+              .refresh();
+        } else {
+          await ref
+              .read(paginatedFollowingProvider(widget.userId).notifier)
+              .refresh();
+        }
+      },
+      child: list,
     );
   }
 }
@@ -315,42 +388,6 @@ class _SkeletonFollowList extends StatelessWidget {
       separatorBuilder: (_, __) =>
           const Divider(height: 1, color: KkColors.divider, indent: 72),
       itemBuilder: (_, __) => const _SkeletonFollowRow(),
-    );
-  }
-}
-
-// ──────────────────────────────────────────────────────────────────
-// 列表(mock 分支:user.followingIds/followerIds 派生)
-// ──────────────────────────────────────────────────────────────────
-
-class _FollowList extends ConsumerWidget {
-  final List<String> userIds;
-  final String emptyTitle;
-
-  const _FollowList({
-    required this.userIds,
-    required this.emptyTitle,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 零旁白(HANDOFF §3):空状态只一行事实,无 CTA 引导。
-    if (userIds.isEmpty) {
-      return ListView(
-        children: [
-          EmptyState(
-            variant: EmptyStateVariant.generic,
-            title: emptyTitle,
-          ),
-        ],
-      );
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
-      itemCount: userIds.length,
-      separatorBuilder: (_, __) =>
-          const Divider(height: 1, color: KkColors.divider, indent: 72),
-      itemBuilder: (context, i) => _FollowRow(userId: userIds[i]),
     );
   }
 }

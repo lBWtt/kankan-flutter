@@ -158,6 +158,10 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
                   initialComments: comments,
                   showInput: true,
                   showHeader: true,
+                  // P0-1 收口:详情页内联在 CustomScrollView 的 SliverToBoxAdapter 里,
+                  // 父级提供滚动 → inlineInScroll: true(Column 渲染,首屏一页,
+                  // 发评论/删评论后 refresh 重拉首页)。无限滚动走全屏 comments_screen。
+                  inlineInScroll: true,
                   // F-4:发评论后回调,触发本屏 rebuild → 底栏「心得 N」
                   // 从同源 commentsFor 重读,计数与 header 实时一致。
                   // 任务⑨:删除/编辑也走此回调(内部 _doDelete/_submitEdit 同步

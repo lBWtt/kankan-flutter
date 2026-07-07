@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/network/app_exception.dart';
+import '../../core/pagination/infinite_scroll.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/backend_id.dart';
@@ -15,6 +16,7 @@ import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../providers/app_state_provider.dart';
+import '../../providers/paginated_comments_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
 import 'avatar.dart';
@@ -64,6 +66,19 @@ class CommentThread extends ConsumerStatefulWidget {
   /// 不传则忽略(评论页 / 弹层等不依赖外层计数实时刷新的场景)。
   final VoidCallback? onChanged;
 
+  /// 是否内联在父滚动容器里(P0-1 收口)。
+  ///
+  /// - `true`:CommentThread 用 Column 渲染(shrinkWrap 语义),不挂自己的
+  ///   ScrollController,不做无限滚动。适合 detail_screen SliverToBoxAdapter /
+  ///   post_detail_screen ListView / comments_screen SingleChildScrollView
+  ///   等父级已提供滚动的场景。首屏一页 + 发评论/删评论后 invalidate 重拉首页。
+  /// - `false`(默认):CommentThread 拥有自己的滚动容器(ListView.builder +
+  ///   ScrollController + InfiniteScroll + LoadMoreIndicator)。适合
+  ///   comment_bottom_sheet Expanded 等父级无滚动容器的场景。
+  ///
+  /// mock 模式忽略此参数(始终 Column 渲染,mock Page.last hasMore=false)。
+  final bool inlineInScroll;
+
   const CommentThread({
     super.key,
     required this.hostType,
@@ -73,6 +88,7 @@ class CommentThread extends ConsumerStatefulWidget {
     this.showHeader = true,
     this.onCommentLongPress,
     this.onChanged,
+    this.inlineInScroll = false,
   });
 
   @override
@@ -80,6 +96,8 @@ class CommentThread extends ConsumerStatefulWidget {
 }
 
 class _CommentThreadState extends ConsumerState<CommentThread> {
+  // mock 模式:本地 _comments(从 widget.initialComments 同步初始化 + setState 追加)。
+  // remote 模式:_comments 不用,build 时从 paginatedCommentsProvider 派生 state.items。
   late List<Comment> _comments = List.of(widget.initialComments);
   final _ctrl = TextEditingController();
   final _replyCtrl = TextEditingController();
@@ -89,33 +107,31 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
 
   // 真数据模式:useRemote + 真后端宿主(UUID)→ 评论从后端读/写。
   bool get _remote => AppConfig.useRemote && looksLikeBackendId(widget.hostId);
-  final Set<String> _remoteLiked = {}; // 后端返回的「我已赞」评论 id(前端 Comment 无此字段)
+  String get _paginatedKey => commentThreadKey(widget.hostType, widget.hostId);
+
+  // remote 模式 + !inlineInScroll 时,CommentThread 拥有自己的 ScrollController
+  // (挂在 ListView.builder 上 + InfiniteScroll 触底加载更多)。
+  // inlineInScroll=true 或 mock 模式不创建(用父级滚动 / 无需滚动)。
+  ScrollController? _ownScrollCtrl;
 
   @override
   void initState() {
     super.initState();
-    if (_remote) _reloadRemote();
-  }
-
-  /// 远程模式:从后端拉评论树 + 已赞集合,刷新本地显示。
-  Future<void> _reloadRemote() async {
-    try {
-      final r = await ref.read(commentsApiProvider).list(widget.hostType, widget.hostId);
-      if (!mounted) return;
-      setState(() {
-        _comments = r.comments;
-        _remoteLiked
-          ..clear()
-          ..addAll(r.likedIds);
+    if (_remote && !widget.inlineInScroll) {
+      _ownScrollCtrl = ScrollController();
+      InfiniteScroll.attach(_ownScrollCtrl!, onLoadMore: () {
+        // hasMore=false 时 Notifier.loadMore no-op(mock + remote 末页)。
+        ref.read(paginatedCommentsProvider(_paginatedKey).notifier).loadMore();
       });
-      widget.onChanged?.call();
-    } catch (_) {
-      // 拉取失败:保留现状(初始为 initialComments，可能是空)
     }
+    // remote 模式首屏加载:paginatedCommentsProvider 是 autoDispose.family,
+    // 首次 watch 时自动 build() → microtask 触发 fetchPage → 拉首页评论 +
+    // mergeLikedIds 并入 app_state。无需手动 _reloadRemote(原 mock 谱系方案)。
   }
 
   @override
   void dispose() {
+    _ownScrollCtrl?.dispose();
     _ctrl.dispose();
     _replyCtrl.dispose();
     _editCtrl.dispose();
@@ -124,38 +140,50 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
 
   @override
   Widget build(BuildContext context) {
+    // remote 模式:watch 分页 state(loading → items 空 + isLoading=true;
+    // data → items 填充;error → items 空 + error 非 null)。
+    final paginatedState =
+        _remote ? ref.watch(paginatedCommentsProvider(_paginatedKey)) : null;
+    final comments = paginatedState?.items ?? _comments;
+    final isLoading = paginatedState?.isLoading ?? false;
+    final isLoadingMore = paginatedState?.isLoadingMore ?? false;
+
+    // 远程模式 + 自有滚动容器:ListView.builder + InfiniteScroll + LoadMoreIndicator。
+    // 其余(inlineInScroll=true 或 mock):Column 渲染(原结构,父级提供滚动)。
+    if (_remote && !widget.inlineInScroll) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.showHeader) _header(comments.length),
+          Expanded(
+            child: _remoteListView(comments, isLoading, isLoadingMore),
+          ),
+          if (widget.showInput) ...[
+            const SizedBox(height: KkSpacing.sm),
+            _inputBar(),
+          ],
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.showHeader)
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: KkSpacing.lg,
-              vertical: KkSpacing.md,
-            ),
-            child: Text(
-              '心得 ${_comments.length}',
-              style: KkType.h3,
-            ),
-          ),
-        if (_comments.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(KkSpacing.xl),
-            child: Text(
-              '暂无心得',
-              style: KkType.bodySm.copyWith(color: KkColors.t4),
-              textAlign: TextAlign.center,
-            ),
-          )
+        if (widget.showHeader) _header(comments.length),
+        if (isLoading && comments.isEmpty)
+          _loadingHint()
+        else if (comments.isEmpty)
+          _emptyHint()
         else
-          for (final c in _comments)
+          for (final c in comments)
             _CommentTile(
               comment: c,
               onLike: () => _toggleLike(c.id),
               onReply: () => _startReply(c.id),
-              isLiked: _remote
-                  ? _remoteLiked.contains(c.id)
-                  : ref.watch(appStateProvider).likedItemIds.contains(c.id),
+              // P0-1 收口:remote likedIds 由 paginatedCommentsProvider.fetchPage
+              // mergeLikedIds 并入 app_state.likedItemIds;mock 也走同一字段。
+              // 统一从 app_state 读,isLiked 真源单一。
+              isLiked: ref.watch(appStateProvider).likedItemIds.contains(c.id),
               // 任务⑨:外部 onCommentLongPress 作为可选 override;
               // 外部没传则用内部 _showActions(接通复制/编辑(own)/删除(own)/打开链接)。
               onLongPress: widget.onCommentLongPress ?? _showActions,
@@ -165,6 +193,82 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
           _inputBar(),
         ],
       ],
+    );
+  }
+
+  Widget _header(int count) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: KkSpacing.lg,
+        vertical: KkSpacing.md,
+      ),
+      child: Text('心得 $count', style: KkType.h3),
+    );
+  }
+
+  Widget _emptyHint() {
+    return Padding(
+      padding: const EdgeInsets.all(KkSpacing.xl),
+      child: Text(
+        '暂无心得',
+        style: KkType.bodySm.copyWith(color: KkColors.t4),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _loadingHint() {
+    return const Padding(
+      padding: EdgeInsets.all(KkSpacing.xl),
+      child: Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+    );
+  }
+
+  /// remote 模式 + 自有滚动容器:评论列表 ListView.builder。
+  Widget _remoteListView(
+    List<Comment> comments,
+    bool isLoading,
+    bool isLoadingMore,
+  ) {
+    if (isLoading && comments.isEmpty) {
+      return const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    if (comments.isEmpty) {
+      return ListView(
+        children: [_emptyHint()],
+      );
+    }
+    // +1:底部加载指示器(追加加载时显示)。hasMore=false 时 LoadMoreIndicator
+    // 自身 SizedBox.shrink,不占位。
+    return ListView.builder(
+      controller: _ownScrollCtrl,
+      padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
+      itemCount: comments.length + 1,
+      itemBuilder: (context, i) {
+        if (i == comments.length) {
+          return LoadMoreIndicator(enabled: isLoadingMore);
+        }
+        final c = comments[i];
+        return _CommentTile(
+          comment: c,
+          onLike: () => _toggleLike(c.id),
+          onReply: () => _startReply(c.id),
+          isLiked: ref.watch(appStateProvider).likedItemIds.contains(c.id),
+          onLongPress: widget.onCommentLongPress ?? _showActions,
+        );
+      },
     );
   }
 
@@ -179,30 +283,11 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
     });
   }
 
+  /// P0-1 收口:统一走 appState.toggleCommentLike(mock 短 id 本地即真源;
+  /// remote UUID 乐观 toggle likedItemIds + 后端同步 + 失败回滚)。
+  /// 不再用本地 _remoteLiked Set(原双轨),likedIds 真源单一在 app_state。
   void _toggleLike(String commentId) {
-    if (_remote) {
-      final wasLiked = _remoteLiked.contains(commentId);
-      setState(() {
-        if (wasLiked) {
-          _remoteLiked.remove(commentId);
-        } else {
-          _remoteLiked.add(commentId);
-        }
-      });
-      ref.read(commentsApiProvider).setLike(commentId, !wasLiked).catchError((_) {
-        if (mounted) {
-          setState(() {
-            if (wasLiked) {
-              _remoteLiked.add(commentId);
-            } else {
-              _remoteLiked.remove(commentId);
-            }
-          });
-        }
-      });
-      return;
-    }
-    ref.read(appStateProvider.notifier).toggleLike(commentId);
+    ref.read(appStateProvider.notifier).toggleCommentLike(commentId);
   }
 
   void _toast(String msg) {
@@ -337,22 +422,27 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
   }
 
   void _doDelete(Comment c) {
-    // 远程模式:删后端 → 重取。
+    // 远程模式:乐观移除(PaginatedNotifier.removeItem 即时反馈)→ 后端 delete →
+    // 失败 refresh 回滚。不再用本地 _comments.removeWhere(build 用 provider items)。
     if (_remote) {
-      setState(() {
-        _comments.removeWhere((x) => x.id == c.id); // 乐观移除
-      });
+      ref
+          .read(paginatedCommentsProvider(_paginatedKey).notifier)
+          .removeItem(c.id);
       () async {
         try {
           await ref.read(commentsApiProvider).delete(c.id);
-          await _reloadRemote();
+          // 后端确认成功,乐观态即正确,无需重拉。
         } on AppException catch (e) {
           if (mounted) {
             _toast(e.message);
-            await _reloadRemote(); // 失败也重取,恢复真实列表
+            // 失败 → refresh 重拉首页恢复(rollback 乐观移除)。
+            await ref
+                .read(paginatedCommentsProvider(_paginatedKey).notifier)
+                .refresh();
           }
         }
       }();
+      widget.onChanged?.call();
       return;
     }
     setState(() {
@@ -373,7 +463,7 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
     final text = (isReply ? _replyCtrl.text : _ctrl.text).trim();
     if (text.isEmpty) return;
 
-    // 远程模式:发到后端 → 重取。清输入、收起回复态。
+    // 远程模式:发到后端 → refresh 重拉首页(新评论出现)。清输入、收起回复态。
     if (_remote) {
       final parentId = isReply ? _replyingTo : null;
       setState(() {
@@ -389,7 +479,12 @@ class _CommentThreadState extends ConsumerState<CommentThread> {
         try {
           await ref.read(commentsApiProvider)
               .create(widget.hostType, widget.hostId, text, parentId: parentId);
-          await _reloadRemote();
+          // 发送成功 → refresh 重拉首页(PaginatedNotifier.refresh 保留旧 items
+          // 直到新页到达,无空窗闪烁)。
+          await ref
+              .read(paginatedCommentsProvider(_paginatedKey).notifier)
+              .refresh();
+          widget.onChanged?.call();
         } on AppException catch (e) {
           if (mounted) _toast(e.message);
         }
