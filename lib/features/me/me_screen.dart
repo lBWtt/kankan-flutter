@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/parse_count.dart';
 import '../../core/widgets/cover_art.dart';
 import '../../core/widgets/tappable.dart';
+import '../../data/api/users_api.dart';
 import '../../data/seed/mock_seed.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
@@ -62,8 +64,20 @@ class MeScreen extends ConsumerWidget {
     // 真实统计(禁编造;演示口径取 mock 'me')
     final myProjects = projectRepo.byAuthor('me');
     final myPosts = postRepo.byAuthor('me');
-    final followingCount = (mockMe?.followingIds ?? const <String>[]).length;
-    final followerCount = (mockMe?.followerIds ?? const <String>[]).length;
+    // 计数策略:登录 + useRemote → GET /me 真计数(loading/error 退化 mock 占位,
+    // 避免数字闪烁/突变);未登录/mock 走 mock 'me' 派生(HANDOFF §6.10 真实数组长度)。
+    final mockFollowing = (mockMe?.followingIds ?? const <String>[]).length;
+    final mockFollower = (mockMe?.followerIds ?? const <String>[]).length;
+    var followingCount = mockFollowing;
+    var followerCount = mockFollower;
+    if (isLoggedIn && AppConfig.useRemote) {
+      // valueOrNull:loading 时 null → 显 mock 占位;data 时真值;error 时 null → mock 兜底。
+      final real = ref.watch(myCountsProvider).value;
+      if (real != null) {
+        followingCount = real.following;
+        followerCount = real.follower;
+      }
+    }
     final totalLikes = myProjects.fold<int>(0, (s, p) => s + p.likes) +
         myPosts.fold<int>(0, (s, p) => s + p.likes);
     final savedCount = appState.savedProjectIds.length;
@@ -76,6 +90,11 @@ class MeScreen extends ConsumerWidget {
         .whereType<Project>()
         .toList();
 
+    // 关注/粉丝列表入口:登录 → 真 UUID(follows 屏走 remote 真列表,与真计数对齐);
+    // 未登录 → 'me'(mock 演示列表)。
+    final followsTargetId =
+        (isLoggedIn && auth.currentUser != null) ? auth.currentUser!.id : 'me';
+
     return ListView(
       padding: const EdgeInsets.only(bottom: KkSpacing.xxxl),
       children: [
@@ -87,8 +106,9 @@ class MeScreen extends ConsumerWidget {
           followingCount: followingCount,
           followerCount: followerCount,
           totalLikes: totalLikes,
-          onTapFollowing: () => context.push(KkRoutes.follows('me')),
-          onTapFollowers: () => context.push(KkRoutes.follows('me')),
+          onTapFollowing: () => context.push(KkRoutes.follows(followsTargetId)),
+          onTapFollowers: () =>
+              context.push(KkRoutes.follows(followsTargetId)),
           fourthStatLabel: '收藏',
           fourthStatValue: savedCount,
           onTapFourthStat: () => context.go(KkRoutes.library),
