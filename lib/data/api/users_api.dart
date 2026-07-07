@@ -42,11 +42,18 @@ class UserPublic {
   });
 }
 
-/// 「我的」关注/粉丝计数（GET /me 取 following_count + follower_count 两字段）。
+/// 「我的」四联计数（GET /me：关注/粉丝/收藏/获赞）。
 class MyCounts {
   final int following;
   final int follower;
-  const MyCounts(this.following, this.follower);
+  final int favorites; // 我收藏的项目数
+  final int receivedLikes; // 我的内容获赞总数（项目反应 + 动态点赞）
+  const MyCounts(
+    this.following,
+    this.follower, {
+    this.favorites = 0,
+    this.receivedLikes = 0,
+  });
 }
 
 class UsersApi {
@@ -64,6 +71,8 @@ class UsersApi {
         return MyCounts(
           _readInt(m['following_count']),
           _readInt(m['follower_count']),
+          favorites: _readInt(m['favorite_count']),
+          receivedLikes: _readInt(m['received_like_count']),
         );
       }
       throw const AppException(code: 'UNKNOWN', message: '/me 返回格式异常');
@@ -163,12 +172,13 @@ final usersApiProvider = Provider<UsersApi>(
   (ref) => UsersApi(ref.watch(dioProvider)),
 );
 
-/// 我的关注/粉丝计数（GET /me）。
+/// 我的四联计数（GET /me：关注/粉丝/收藏/获赞）。
 /// 仅登录 + useRemote 时拉真数据，否则返回 null（调用方走 mock 兜底）。
-/// watch followedUserIds.length：关注/取关后自动刷新我的 following_count
-/// （本地状态变 → provider 重建 → 重拉 /me）。
+/// watch followedUserIds.length / savedProjectIds.length：关注-取关、收藏-取消后
+/// 本地状态变 → provider 重建 → 重拉 /me，我的 following_count / favorite_count 自动刷新。
 final myCountsProvider = FutureProvider<MyCounts?>((ref) async {
-  ref.watch(appStateProvider.select((s) => s.followedUserIds.length));
+  ref.watch(appStateProvider.select(
+      (s) => (s.followedUserIds.length, s.savedProjectIds.length)));
   final auth = ref.watch(authProvider);
   if (!auth.isLoggedIn || !AppConfig.useRemote) return null;
   return ref.watch(usersApiProvider).myCounts();

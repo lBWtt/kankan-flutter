@@ -70,17 +70,20 @@ class MeScreen extends ConsumerWidget {
     final mockFollower = (mockMe?.followerIds ?? const <String>[]).length;
     var followingCount = mockFollowing;
     var followerCount = mockFollower;
+    // 获赞/收藏 mock 口径(未登录/mock 用)。
+    var totalLikes = myProjects.fold<int>(0, (s, p) => s + p.likes) +
+        myPosts.fold<int>(0, (s, p) => s + p.likes);
+    var savedCount = appState.savedProjectIds.length;
     if (isLoggedIn && AppConfig.useRemote) {
-      // valueOrNull:loading 时 null → 显 mock 占位;data 时真值;error 时 null → mock 兜底。
+      // .value:loading 时 null → 显 mock 占位;data 时真值;error 时 null → mock 兜底。
       final real = ref.watch(myCountsProvider).value;
       if (real != null) {
         followingCount = real.following;
         followerCount = real.follower;
+        totalLikes = real.receivedLikes; // 我的内容获赞总数（后端聚合）
+        savedCount = real.favorites; // 我的收藏数（后端聚合）
       }
     }
-    final totalLikes = myProjects.fold<int>(0, (s, p) => s + p.likes) +
-        myPosts.fold<int>(0, (s, p) => s + p.likes);
-    final savedCount = appState.savedProjectIds.length;
     // 免打扰生效:DND 开 → effectiveUnreadCount 归零 → 通知铃红点消失。
     final unreadCount = appState.effectiveUnreadCount;
 
