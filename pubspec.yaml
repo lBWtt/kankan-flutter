@@ -14,6 +14,14 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
 
+  # ── P2-i18n:本地化基础(Material/Cupertino/Widgets 的 zh/en 文案 + 日期/数字格式)──
+  # 用法:app.dart 的 MaterialApp.router 接 localizationsDelegates +
+  # supportedLocales。当前 app 文案由 lib/l10n/kk_strings.dart 手写(免 codegen),
+  # 这个依赖只负责框架层本地化(MaterialLocalizations 的撤销/粘贴等系统文案、
+  # 日期数字格式)。未来切 flutter gen-l10n 时,此依赖同样必需。
+  flutter_localizations:
+    sdk: flutter
+
   # ── 状态管理:Riverpod 3.x ──
   flutter_riverpod: ^3.0.0
   riverpod: ^3.0.0
@@ -89,6 +97,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # P2-i18n:启用 flutter gen-l10n(配合 l10n.yaml)。
+  # 当前 app 文案由 lib/l10n/kk_strings.dart 手写(免 codegen,沙箱无 flutter SDK 也能编译);
+  # 同时保留 lib/l10n/app_zh.arb / app_en.arb 作为切 gen-l10n 时的源(两路并行维护)。
+  # 未来切 gen-l10n 时:删 kk_strings.dart,改用 `AppLocalizations.of(context)` 即可。
+  generate: true
 
   # ── 字体(P2 接口留好,资源待投)──
   # P2-FONTS: 本仓库默认 *不* 携带 .ttf 资源(避免二进制大文件入库 + 沙箱

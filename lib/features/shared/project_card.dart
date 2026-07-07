@@ -11,6 +11,7 @@ import '../../core/widgets/kk_reaction_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../data/seed/mock_seed.dart';
+import '../../l10n/kk_strings.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
@@ -65,6 +66,8 @@ class ProjectCard extends ConsumerWidget {
     final isSaved = appState.savedProjectIds.contains(project.id);
     final isLiked = appState.likedItemIds.contains(project.id);
     final likeCount = project.likes + (isLiked ? 1 : 0);
+    // P2-i18n / 无障碍:整卡 + 点赞 + 收藏 icon-only 按钮的 semanticLabel。
+    final s = ref.watch(kkStringsProvider);
 
     return Tappable(
       onTap: () {
@@ -73,6 +76,8 @@ class ProjectCard extends ConsumerWidget {
         context.push(KkRoutes.detail(project.id));
       },
       borderRadius: BorderRadius.circular(KkRadius.lg),
+      // P2-无障碍:整卡 Tappable 传 semanticLabel,读屏念「项目:<标题>」。
+      semanticLabel: s.projectSemantic(project.title),
       child: Container(
         decoration: BoxDecoration(
           color: KkColors.bgCard,
@@ -145,6 +150,7 @@ class ProjectCard extends ConsumerWidget {
                   Row(
                     children: [
                       // 任务 C:点赞用 KkReactionButton——点亮 scale 弹 + haptic。
+                      // P2-无障碍:icon-only 按钮传 semanticLabel,读屏念「点赞 <n>」。
                       KkReactionButton(
                         icon: isLiked
                             ? Icons.favorite
@@ -157,6 +163,8 @@ class ProjectCard extends ConsumerWidget {
                           horizontal: 2,
                           vertical: 4,
                         ),
+                        semanticLabel:
+                            '${s.like} ${formatCount(likeCount)}',
                         onTap: () => ref
                             .read(appStateProvider.notifier)
                             .toggleLike(project.id),
@@ -179,6 +187,7 @@ class ProjectCard extends ConsumerWidget {
                       ],
                       const Spacer(),
                       // 收藏(任务 C:用 KkReactionButton——点亮 scale 弹 + haptic)。
+                      // P2-无障碍:icon-only 按钮传 semanticLabel,读屏念「收藏」。
                       KkReactionButton(
                         icon: isSaved
                             ? Icons.bookmark
@@ -187,6 +196,7 @@ class ProjectCard extends ConsumerWidget {
                         isLit: isSaved,
                         iconSize: 18,
                         padding: EdgeInsets.zero,
+                        semanticLabel: s.save,
                         onTap: () => ref
                             .read(appStateProvider.notifier)
                             .toggleSave(project.id),
@@ -203,12 +213,15 @@ class ProjectCard extends ConsumerWidget {
   }
 
   Widget _compact(BuildContext context, WidgetRef ref) {
+    // P2-i18n / 无障碍:整卡 Tappable 传 semanticLabel,读屏念「项目:<标题>」。
+    final s = ref.watch(kkStringsProvider);
     return Tappable(
       onTap: () {
         ref.read(analyticsProvider).track('card_click', projectId: project.id);
         ref.read(appStateProvider.notifier).recordBrowse(project.id);
         context.push(KkRoutes.detail(project.id));
       },
+      semanticLabel: s.projectSemantic(project.title),
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: KkSpacing.lg,

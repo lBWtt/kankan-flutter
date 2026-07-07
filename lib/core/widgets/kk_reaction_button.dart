@@ -40,6 +40,11 @@ class KkReactionButton extends StatefulWidget {
   /// 内边距(默认与 _IconStat 一致:vertical md, horizontal sm)。
   final EdgeInsetsGeometry padding;
 
+  /// P2-无障碍:可选语义标签。Icon-only 反应按钮必须传(读屏需要文字念);
+  /// 含 value 时 Flutter 会自动读数字,但仍需一个动作名作为标签前缀。
+  /// null 时不包 Semantics(向后兼容现有调用点)。
+  final String? semanticLabel;
+
   const KkReactionButton({
     super.key,
     required this.icon,
@@ -52,6 +57,7 @@ class KkReactionButton extends StatefulWidget {
       vertical: KkSpacing.md,
       horizontal: KkSpacing.sm,
     ),
+    this.semanticLabel,
   });
 
   @override
@@ -104,6 +110,9 @@ class _KkReactionButtonState extends State<KkReactionButton>
     final showValue = widget.value != null && widget.value!.isNotEmpty;
     return Tappable(
       onTap: _handleTap,
+      // P2-无障碍:透传到 Tappable 的 Semantics(icon-only 按钮需要语义标签,
+      // 读屏会念「<label>, 按钮」)。null 时 Tappable 不包 Semantics,向后兼容。
+      semanticLabel: widget.semanticLabel,
       child: Padding(
         padding: widget.padding,
         child: Row(

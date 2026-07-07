@@ -12,6 +12,7 @@ import '../../core/widgets/kk_reaction_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../data/seed/mock_seed.dart';
+import '../../l10n/kk_strings.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
@@ -48,6 +49,9 @@ class PostCard extends ConsumerWidget {
     final appState = ref.watch(appStateProvider);
     final isLiked = appState.likedItemIds.contains(post.id);
     final likeCount = post.likes + (isLiked ? 1 : 0);
+    // P2-i18n / 无障碍:点赞 / 评论 icon-only 按钮的 semanticLabel 接 KkStrings。
+    // 整卡 Tappable 也传 semanticLabel(读屏念「动态:<作者>」)。
+    final s = ref.watch(kkStringsProvider);
 
     final card = Container(
       decoration: const BoxDecoration(
@@ -142,6 +146,7 @@ class PostCard extends ConsumerWidget {
           Row(
             children: [
               // 任务 C:点赞用 KkReactionButton——点亮 scale 弹 + haptic。
+              // P2-无障碍:icon-only 按钮传 semanticLabel,读屏念「点赞 <n>」。
               KkReactionButton(
                 icon: isLiked ? Icons.favorite : Icons.favorite_border,
                 value: formatCount(likeCount),
@@ -152,6 +157,7 @@ class PostCard extends ConsumerWidget {
                   vertical: KkSpacing.sm,
                   horizontal: KkSpacing.xs,
                 ),
+                semanticLabel: '${s.like} ${formatCount(likeCount)}',
                 onTap: () => ref
                     .read(appStateProvider.notifier)
                     .togglePostLike(post.id),
@@ -163,6 +169,9 @@ class PostCard extends ConsumerWidget {
                 // 不用写死的 post.commentCount(D 类 bug 在 feed 复现)。
                 value: formatCount(commentsFor(post.id).length),
                 color: KkColors.t3,
+                // P2-无障碍:icon-only 按钮传 semanticLabel,读屏念「评论 <n>」。
+                semanticLabel:
+                    '${s.comment} ${formatCount(commentsFor(post.id).length)}',
                 // 默认:推全屏评论页(HANDOFF §6.1)。调用方可覆盖(如 discover 用底部弹层)。
                 onTap: onCommentTap ??
                     () => context.push(KkRoutes.comments('post', post.id)),
@@ -176,10 +185,12 @@ class PostCard extends ConsumerWidget {
 
     // 整卡点击 + 长按快捷菜单(内部热区优先,手势竞技场自然分离)。
     // D4:长按弹快捷菜单(不感兴趣 / 复制链接 / 举报),复用 _sheetItem 风格。
+    // P2-无障碍:整卡 Tappable 传 semanticLabel,读屏念「动态:<作者名>」。
     return Tappable(
       onTap: onTap,
       onLongPress: () => _showQuickMenu(context, ref),
       borderRadius: BorderRadius.zero,
+      semanticLabel: s.postSemantic(author?.name ?? post.authorId),
       child: card,
     );
   }
@@ -689,17 +700,22 @@ class _IconStat extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
 
+  /// P2-无障碍:可选语义标签(icon-only 按钮必须传)。透传到 Tappable。
+  final String? semanticLabel;
+
   const _IconStat({
     required this.icon,
     required this.value,
     required this.color,
     this.onTap,
+    this.semanticLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     return Tappable(
       onTap: onTap,
+      semanticLabel: semanticLabel,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           vertical: KkSpacing.sm,

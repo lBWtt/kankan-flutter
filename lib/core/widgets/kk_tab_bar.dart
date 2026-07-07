@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../l10n/kk_strings.dart';
 import '../../providers/app_state_provider.dart';
 import '../theme/kk_colors.dart';
 import '../theme/tokens.dart';
@@ -81,6 +82,9 @@ class _KkBottomBar extends ConsumerWidget {
     // (免打扰开启时归零,红点自动消失)。红点用 KkColors.like(情感色,与 me
     // 页铃铛红点一致;非 take,所以不用 coral)。
     final unreadCount = ref.watch(appStateProvider).effectiveUnreadCount;
+    // P2-i18n:底栏 4 Tab 标签接 KkStrings(参考实现,其余屏按需迁移)。
+    // 切 gen-l10n 时:改为 `AppLocalizations.of(context)!.discoverTab` 等。
+    final s = ref.watch(kkStringsProvider);
     return Container(
       decoration: const BoxDecoration(
         color: KkColors.bgCard,
@@ -92,11 +96,11 @@ class _KkBottomBar extends ConsumerWidget {
           height: 56,
           child: Row(
             children: [
-              Expanded(child: _tab(context, 0, '发现', Icons.explore_outlined, Icons.explore, showBadge: false)),
-              Expanded(child: _tab(context, 1, '看看', Icons.grid_view_outlined, Icons.grid_view, showBadge: false)),
-              Expanded(child: _fab()),
-              Expanded(child: _tab(context, 2, '收藏', Icons.bookmark_border_outlined, Icons.bookmark, showBadge: false)),
-              Expanded(child: _tab(context, 3, '我的', Icons.person_outline, Icons.person, showBadge: unreadCount > 0)),
+              Expanded(child: _tab(context, 0, s.discoverTab, Icons.explore_outlined, Icons.explore, showBadge: false)),
+              Expanded(child: _tab(context, 1, s.kankanTab, Icons.grid_view_outlined, Icons.grid_view, showBadge: false)),
+              Expanded(child: _fab(s.publish)),
+              Expanded(child: _tab(context, 2, s.libraryTab, Icons.bookmark_border_outlined, Icons.bookmark, showBadge: false)),
+              Expanded(child: _tab(context, 3, s.meTab, Icons.person_outline, Icons.person, showBadge: unreadCount > 0)),
             ],
           ),
         ),
@@ -168,9 +172,13 @@ class _KkBottomBar extends ConsumerWidget {
 
   /// 中间 + FAB。墨绿圆 + 白色加号。
   /// HANDOFF §5:珊瑚橙只给 take,FAB 用墨绿(品牌色),不用珊瑚橙。
-  Widget _fab() {
+  ///
+  /// P2-i18n / 无障碍:[publishLabel] 用于 Tappable.semanticLabel(读屏念
+  /// 「发布」)。Icon-only 按钮必须传语义标签,否则读屏只会念「加号按钮」。
+  Widget _fab(String publishLabel) {
     return Tappable(
       onTap: onPublishTap,
+      semanticLabel: publishLabel,
       borderRadius: BorderRadius.circular(KkRadius.pill),
       child: Container(
         width: 44,
