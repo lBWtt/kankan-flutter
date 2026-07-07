@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/app_exception.dart';
 import '../../core/network/dio_provider.dart';
+import '../../core/pagination/page.dart';
 import '../../domain/models/models.dart';
 import '../dto/project_card_dto.dart';
 
@@ -30,6 +31,39 @@ class ProjectsApi {
           .whereType<Map<dynamic, dynamic>>()
           .map((m) => projectFromCardJson(Map<String, dynamic>.from(m)))
           .toList();
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
+  /// GET /projects（游标分页）→ 项目卡片分页。
+  /// 后端返回 {items, next_cursor, has_more}；无游标时 hasMore 按 items.length>=limit 推断。
+  Future<Page<Project>> listPaged({int limit = 20, String? cursor}) async {
+    try {
+      final qp = <String, dynamic>{'limit': limit};
+      if (cursor != null && cursor.isNotEmpty) qp['cursor'] = cursor;
+      final resp = await _dio.get<dynamic>('/projects', queryParameters: qp);
+      final data = resp.data;
+      final Object? rawItems = data is Map<dynamic, dynamic>
+          ? (data['items'] ?? data['data'] ?? const <dynamic>[])
+          : (data ?? const <dynamic>[]);
+      final items = rawItems is List ? rawItems : const <dynamic>[];
+      final projects = items
+          .whereType<Map<dynamic, dynamic>>()
+          .map((m) => projectFromCardJson(Map<String, dynamic>.from(m)))
+          .toList();
+      String? nextCursor;
+      bool hasMore;
+      if (data is Map) {
+        final nc = data['next_cursor'];
+        nextCursor = nc is String && nc.isNotEmpty ? nc : null;
+        final hm = data['has_more'];
+        hasMore = hm is bool ? hm : projects.length >= limit;
+      } else {
+        hasMore = projects.length >= limit;
+      }
+      return Page<Project>(
+          items: projects, nextCursor: nextCursor, hasMore: hasMore);
     } on DioException catch (e) {
       throw AppException.fromDio(e);
     }

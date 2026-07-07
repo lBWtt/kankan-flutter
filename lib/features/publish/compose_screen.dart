@@ -17,6 +17,7 @@ import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/paginated_posts_provider.dart';
 import '../../providers/remote_post_provider.dart';
 import '../../router/routes.dart';
 
@@ -149,6 +150,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         });
         if (!mounted) return;
         ref.invalidate(remotePostsProvider); // 动态流刷新看到新动态
+        ref.invalidate(paginatedPostsProvider); // P0-1：分页流也刷新（发现页推荐流）
         _finish('已发送到「看看」');
         return;
       } on AppException catch (e) {
@@ -172,6 +174,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     ref.read(postRepositoryProvider).addPost(post);
     // 让依赖 postRepositoryProvider 的屏(discover 推荐/关注/profile 动态)刷新
     ref.invalidate(postRepositoryProvider);
+    ref.invalidate(paginatedPostsProvider); // P0-1：分页流刷新看到新动态
     _finish('已发送');
   }
 

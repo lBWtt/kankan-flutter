@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
 import '../../core/network/app_exception.dart';
 import '../../core/network/dio_provider.dart';
+import '../../core/pagination/page.dart';
 import '../../domain/models/models.dart';
 import '../remote_user_cache.dart';
 
@@ -88,11 +89,21 @@ class PostList {
   const PostList(this.posts, this.likedIds);
 }
 
+/// 分页动态结果：动态列表 + 已赞集合 + 下一页游标 + hasMore。
+/// 后端返回 {items, next_cursor, has_more}；无游标时 hasMore 按 items.length>=limit 推断。
+class PostPage {
+  final List<Post> posts;
+  final Set<String> likedIds;
+  final String? nextCursor;
+  final bool hasMore;
+  const PostPage(this.posts, this.likedIds, this.nextCursor, this.hasMore);
+}
+
 class PostsApi {
   final Dio _dio;
   PostsApi(this._dio);
 
-  /// GET /posts → 动态流 + 已赞集合。
+  /// GET /posts → 动态流 + 已赞集合（首页，无分页）。保留给非 feed 调用方。
   Future<PostList> list({int limit = 30}) async {
     try {
       final resp = await _dio.get<dynamic>('/posts', queryParameters: {'page_size': limit});
@@ -102,11 +113,37 @@ class PostsApi {
     }
   }
 
-  /// GET /users/{id}/posts → ta 的动态。
+  /// GET /posts（游标分页）→ 动态流 + 已赞集合 + nextCursor + hasMore。
+  /// [cursor]=null 拉首页；非 null 拉下一页。后端不认 cursor 时返回首页，
+  /// 前端去重 + hasMore 启发式兜底（见 PaginatedNotifier.loadMore）。
+  Future<PostPage> listPaged({int limit = 20, String? cursor}) async {
+    try {
+      final qp = <String, dynamic>{'page_size': limit};
+      if (cursor != null && cursor.isNotEmpty) qp['cursor'] = cursor;
+      final resp = await _dio.get<dynamic>('/posts', queryParameters: qp);
+      return _parsePaged(resp.data, limit);
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
+  /// GET /users/{id}/posts → ta 的动态（首页，无分页）。
   Future<PostList> byUser(String userId, {int limit = 30}) async {
     try {
       final resp = await _dio.get<dynamic>('/users/$userId/posts', queryParameters: {'page_size': limit});
       return _parseList(resp.data);
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
+  /// GET /users/{id}/posts（游标分页）→ ta 的动态分页。
+  Future<PostPage> byUserPaged(String userId, {int limit = 20, String? cursor}) async {
+    try {
+      final qp = <String, dynamic>{'page_size': limit};
+      if (cursor != null && cursor.isNotEmpty) qp['cursor'] = cursor;
+      final resp = await _dio.get<dynamic>('/users/$userId/posts', queryParameters: qp);
+      return _parsePaged(resp.data, limit);
     } on DioException catch (e) {
       throw AppException.fromDio(e);
     }
@@ -121,6 +158,29 @@ class PostsApi {
         .map((m) => _postFromJson(Map<String, dynamic>.from(m), liked))
         .toList();
     return PostList(posts, liked);
+  }
+
+  /// 解析分页信封 {items, next_cursor, has_more} + 已赞集合。
+  /// 无 next_cursor/has_more 时：hasMore = posts.length >= limit（启发式）。
+  PostPage _parsePaged(dynamic data, int limit) {
+    final raw = data is Map ? (data['items'] ?? const <dynamic>[]) : const <dynamic>[];
+    final items = raw is List ? raw : const <dynamic>[];
+    final liked = <String>{};
+    final posts = items
+        .whereType<Map<dynamic, dynamic>>()
+        .map((m) => _postFromJson(Map<String, dynamic>.from(m), liked))
+        .toList();
+    String? nextCursor;
+    bool hasMore;
+    if (data is Map) {
+      final nc = data['next_cursor'];
+      nextCursor = nc is String && nc.isNotEmpty ? nc : null;
+      final hm = data['has_more'];
+      hasMore = hm is bool ? hm : posts.length >= limit;
+    } else {
+      hasMore = posts.length >= limit;
+    }
+    return PostPage(posts, liked, nextCursor, hasMore);
   }
 
   /// GET /posts/{id} → 动态详情。404→null。

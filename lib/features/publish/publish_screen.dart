@@ -15,6 +15,7 @@ import '../../data/api/projects_api.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/paginated_projects_provider.dart';
 import '../../providers/publish_provider.dart';
 import '../../router/routes.dart';
 import 'widgets/add_takeaway_sheet.dart';
@@ -656,6 +657,7 @@ class _PublishScreenState extends ConsumerState<PublishScreen> {
       BuildContext context, WidgetRef ref, Project project, String msg) {
     ref.read(projectRepositoryProvider).add(project);
     ref.invalidate(projectRepositoryProvider);
+    ref.invalidate(paginatedProjectsProvider); // P0-1：分页流刷新看到新项目
     _toast(context, msg);
     ref.read(publishDraftProvider.notifier).reset();
     // 任务 A:发布成功清草稿 key + 标记 _sent(dispose 不再存)。
