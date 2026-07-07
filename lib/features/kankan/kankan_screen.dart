@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/config/app_config.dart';
+import '../../core/pagination/infinite_scroll.dart';
+import '../../core/pagination/page.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/parse_count.dart';
@@ -13,7 +14,7 @@ import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../l10n/kk_strings.dart';
 import '../../providers/app_state_provider.dart';
-import '../../providers/remote_project_provider.dart';
+import '../../providers/paginated_projects_provider.dart';
 import '../../router/routes.dart';
 import '../shared/empty_state.dart';
 import '../shared/project_card.dart';
@@ -238,83 +239,78 @@ class _KankanScreenState extends ConsumerState<KankanScreen>
 }
 
 // ── 项目列表(按 sort + domain 真排序)──
-class _ProjectList extends ConsumerWidget {
+// P0-1 分页：用 paginatedProjectsProvider（游标分页 + 无限滚动 + 去重）。
+// mock 模式下 provider 一次性返回全部（hasMore=false），行为与旧版一致。
+// 3 个 tab（精选/热门/最新）共享同一分页 state，各自客户端 filter+sort。
+class _ProjectList extends ConsumerStatefulWidget {
   final String sort;
   final String? domain;
 
   const _ProjectList({required this.sort, required this.domain});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 后端接入开关(--dart-define=USE_REMOTE=true):真数据走 remote,否则 mock。
-    // 默认 mock,不带 flag 构建行为完全不变。
-    // 任务 1:套 RefreshIndicator——下拉重拉。remote 下拉 invalidate
-    // remoteProjectsProvider(等 .future 完成指示器才收);mock 下拉重建无害。
-    if (AppConfig.useRemote) {
-      return RefreshIndicator(
-        color: KkColors.teal,
-        onRefresh: () async {
-          ref.invalidate(remoteProjectsProvider);
-          await ref.read(remoteProjectsProvider.future);
-        },
-        child: _remoteList(context, ref),
-      );
-    }
+  ConsumerState<_ProjectList> createState() => _ProjectListState();
+}
+
+class _ProjectListState extends ConsumerState<_ProjectList> {
+  late final ScrollController _scrollCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl = ScrollController();
+    InfiniteScroll.attach(_scrollCtrl, onLoadMore: () {
+      ref.read(paginatedProjectsProvider.notifier).loadMore();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  String get sort => widget.sort;
+  String? get domain => widget.domain;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(paginatedProjectsProvider);
     return RefreshIndicator(
       color: KkColors.teal,
       onRefresh: () async {
-        // mock:重建无害,invalidate projectRepositoryProvider 让 watch 重建。
+        await ref.read(paginatedProjectsProvider.notifier).refresh();
+        // mock：同步刷 projectRepository（顶部计数 / 推荐条读它）。
         ref.invalidate(projectRepositoryProvider);
-        await Future<void>.delayed(const Duration(milliseconds: 400));
       },
-      child: _mockList(context, ref),
+      child: _body(context, state),
     );
   }
 
-  // ── mock 数据源(内存 repo,默认)──
-  Widget _mockList(BuildContext context, WidgetRef ref) {
-    final repo = ref.watch(projectRepositoryProvider);
-    // 任务⑫:渲染前过滤「不感兴趣」(负反馈闭环)。仅过滤 mock 分支,
-    // _remoteList(真数据)由后端负责,前端不动(避免双重过滤)。
+  Widget _body(BuildContext context, PaginatedState<Project> state) {
+    if (state.isLoading) {
+      return _skeleton();
+    }
+    if (state.error != null && state.items.isEmpty) {
+      return RemoteError(
+        message: '连不上服务器',
+        onRetry: () async =>
+            ref.read(paginatedProjectsProvider.notifier).refresh(),
+      );
+    }
+    // 客户端过滤「不感兴趣」+ domain，再按 sort 排序（mock/remote 通用）。
     final ni = ref.watch(appStateProvider).notInterestedIds;
-    final list = repo
-        .sorted(sort, domain: domain)
-        .where((p) => !ni.contains(p.id))
-        .toList();
+    var list = state.items.where((p) => !ni.contains(p.id)).toList();
+    if (domain != null) {
+      list = list.where((p) => p.domain == domain).toList();
+    }
+    list = _applySort(list);
     if (list.isEmpty) {
       return ListView(
         children: const [EmptyState(variant: EmptyStateVariant.generic)],
       );
     }
-    return _cardListView(list, showAuthor: true);
-  }
-
-  // ── 真数据源(GET /projects,AsyncValue 三态)──
-  Widget _remoteList(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(remoteProjectsProvider);
-    return async.when(
-      loading: () => _skeleton(),
-      error: (e, _) => RemoteError(
-        message: '连不上服务器',
-        onRetry: () async {
-          ref.invalidate(remoteProjectsProvider);
-        },
-      ),
-      data: (all) {
-        // 后端不透传前端 domain/hot 排序,这里客户端兜底(见 DTO 分叉注释)。
-        var list = domain == null
-            ? all
-            : all.where((p) => p.domain == domain).toList();
-        list = _applySort(list);
-        if (list.isEmpty) {
-          return ListView(
-            children: const [EmptyState(variant: EmptyStateVariant.generic)],
-          );
-        }
-        // 真数据卡片现在带真作者(后端卡片已填 author，DTO 缓存进 userByIdProvider)。
-        return _cardListView(list, showAuthor: true);
-      },
-    );
+    return _cardListView(list, state);
   }
 
   List<Project> _applySort(List<Project> src) {
@@ -326,20 +322,26 @@ class _ProjectList extends ConsumerWidget {
         list.sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
       case 'featured':
       default:
-        break; // 保持后端返回顺序
+        break; // 保持返回顺序
     }
     return list;
   }
 
-  Widget _cardListView(List<Project> list, {required bool showAuthor}) {
+  Widget _cardListView(List<Project> list, PaginatedState<Project> state) {
     return ListView.separated(
+      controller: _scrollCtrl,
       padding: const EdgeInsets.fromLTRB(
         KkSpacing.lg, KkSpacing.sm, KkSpacing.lg, KkSpacing.xxl,
       ),
-      itemCount: list.length,
+      // +1：底部加载指示器。
+      itemCount: list.length + 1,
       separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.lg),
-      itemBuilder: (context, i) =>
-          ProjectCard(project: list[i], showAuthor: showAuthor),
+      itemBuilder: (context, i) {
+        if (i == list.length) {
+          return LoadMoreIndicator(enabled: state.isLoadingMore);
+        }
+        return ProjectCard(project: list[i], showAuthor: true);
+      },
     );
   }
 

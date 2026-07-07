@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/config/app_config.dart';
+import '../../core/pagination/infinite_scroll.dart';
+import '../../core/pagination/page.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/skeletons.dart';
@@ -10,7 +11,7 @@ import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/search_repository.dart';
-import '../../providers/remote_post_provider.dart';
+import '../../providers/paginated_posts_provider.dart';
 import '../shared/remote_error.dart';
 import '../../providers/app_state_provider.dart';
 import '../../router/routes.dart';
@@ -173,37 +174,65 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
 }
 
 // ── 推荐 feed:全部动态(按时间倒序)──
-class _RecommendFeed extends ConsumerWidget {
+// P0-1 分页：用 paginatedPostsProvider（游标分页 + 无限滚动 + 去重）。
+// mock 模式下 provider 一次性返回全部（hasMore=false），行为与旧版一致。
+class _RecommendFeed extends ConsumerStatefulWidget {
   const _RecommendFeed();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_RecommendFeed> createState() => _RecommendFeedState();
+}
+
+class _RecommendFeedState extends ConsumerState<_RecommendFeed> {
+  late final ScrollController _scrollCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl = ScrollController();
+    InfiniteScroll.attach(_scrollCtrl, onLoadMore: () {
+      ref.read(paginatedPostsProvider.notifier).loadMore();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // 任务⑬:推荐流顶部「今日话题」横条(话题空则不渲染,零旁白)。
     final topics = ref.watch(searchRepositoryProvider).topTopics(limit: 8);
 
     final Widget feed;
-    if (AppConfig.useRemote) {
-      // 真数据:动态流读 GET /posts（AsyncValue：loading→骨架/错误→重试/data→列表）。
-      final async = ref.watch(remotePostsProvider);
-      feed = async.when(
-        loading: () => const Center(
-          child: Padding(
-            padding: EdgeInsets.all(KkSpacing.xxl),
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(KkColors.teal),
-            ),
+    final state = ref.watch(paginatedPostsProvider);
+    if (state.isLoading) {
+      feed = const Center(
+        child: Padding(
+          padding: EdgeInsets.all(KkSpacing.xxl),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation(KkColors.teal),
           ),
         ),
-        error: (e, _) => RemoteError(
-          message: '动态加载失败',
-          onRetry: () async => ref.invalidate(remotePostsProvider),
-        ),
-        data: (posts) => _refreshableList(context, ref, _filtered(ref, posts), remote: true),
+      );
+    } else if (state.error != null && state.items.isEmpty) {
+      // 首屏加载失败。
+      feed = RemoteError(
+        message: '动态加载失败',
+        onRetry: () async =>
+            ref.read(paginatedPostsProvider.notifier).refresh(),
       );
     } else {
-      final posts = _filtered(ref, ref.watch(postRepositoryProvider).all());
-      feed = _refreshableList(context, ref, posts, remote: false);
+      // 过滤「不感兴趣」+ 按时间倒序（mock/remote 通用；remote 后端已倒序，重排幂等）。
+      final ni = ref.watch(appStateProvider).notInterestedIds;
+      final posts = state.items
+          .where((p) => !ni.contains(p.id))
+          .toList()
+        ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+      feed = _refreshableList(context, ref, posts, state);
     }
 
     if (topics.isEmpty) return feed;
@@ -216,23 +245,27 @@ class _RecommendFeed extends ConsumerWidget {
     );
   }
 
-  /// 过滤「不感兴趣」+ 按时间倒序（mock/remote 通用）。
-  List<Post> _filtered(WidgetRef ref, List<Post> src) {
-    final ni = ref.watch(appStateProvider).notInterestedIds;
-    return src.where((p) => !ni.contains(p.id)).toList()
-      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
-  }
-
-  Widget _refreshableList(BuildContext context, WidgetRef ref, List<Post> posts,
-      {required bool remote}) {
+  Widget _refreshableList(
+    BuildContext context,
+    WidgetRef ref,
+    List<Post> posts,
+    PaginatedState<Post> paginatedState,
+  ) {
     final list = posts.isEmpty
         ? ListView(
             children: const [EmptyState(variant: EmptyStateVariant.feed)],
           )
         : ListView.builder(
+            controller: _scrollCtrl,
             padding: const EdgeInsets.only(bottom: KkSpacing.xxl),
-            itemCount: posts.length,
+            // +1：底部加载指示器（追加加载时显示）。
+            itemCount: posts.length + 1,
             itemBuilder: (context, i) {
+              if (i == posts.length) {
+                return LoadMoreIndicator(
+                  enabled: paginatedState.isLoadingMore,
+                );
+              }
               final post = posts[i];
               return PostCard(
                 post: post,
@@ -244,14 +277,9 @@ class _RecommendFeed extends ConsumerWidget {
     return RefreshIndicator(
       color: KkColors.teal,
       onRefresh: () async {
-        if (remote) {
-          ref.invalidate(remotePostsProvider);
-          await ref.read(remotePostsProvider.future);
-        } else {
-          ref.invalidate(postRepositoryProvider);
-          ref.invalidate(searchRepositoryProvider);
-          await Future<void>.delayed(const Duration(milliseconds: 400));
-        }
+        await ref.read(paginatedPostsProvider.notifier).refresh();
+        // mock：同步刷一下 search repo（今日话题）。
+        ref.invalidate(searchRepositoryProvider);
       },
       child: list,
     );
