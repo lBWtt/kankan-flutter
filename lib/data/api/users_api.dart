@@ -49,6 +49,20 @@ class MyCounts {
   const MyCounts(this.following, this.follower);
 }
 
+/// 一次分页用户列表拉取的结果：用户列表 + 下一页游标 + hasMore。
+/// 后端返回 {items, next_cursor, has_more}；无游标时 hasMore 按 users.length>=limit 推断
+/// （与 posts_api._parsePage 启发式一致）。
+class UserPage {
+  final List<KkUser> users;
+  final String? nextCursor;
+  final bool hasMore;
+  const UserPage({
+    required this.users,
+    required this.nextCursor,
+    required this.hasMore,
+  });
+}
+
 class UsersApi {
   final Dio _dio;
   UsersApi(this._dio);
@@ -107,21 +121,30 @@ class UsersApi {
   }
 
   /// GET /users/{id}/followers → 粉丝列表（UserBrief → KkUser，顺带缓存）。
+  /// 游标分页：[cursor]=null 拉首页；非 null 拉下一页。
   /// 后端返回 { items:[UserBrief], next_cursor, has_more } 或裸数组，两种都兼容。
-  Future<List<KkUser>> followers(String id) async {
+  /// 无 next_cursor/has_more 时：hasMore = users.length >= limit（启发式，与 posts_api 一致）。
+  Future<UserPage> followers(String id, {int limit = 20, String? cursor}) async {
     try {
-      final resp = await _dio.get<dynamic>('/users/$id/followers');
-      return _parseUserList(resp.data);
+      final qp = <String, dynamic>{'page_size': limit};
+      if (cursor != null && cursor.isNotEmpty) qp['cursor'] = cursor;
+      final resp =
+          await _dio.get<dynamic>('/users/$id/followers', queryParameters: qp);
+      return _parseUserPage(resp.data, limit);
     } on DioException catch (e) {
       throw AppException.fromDio(e);
     }
   }
 
   /// GET /users/{id}/following → 关注列表（UserBrief → KkUser，顺带缓存）。
-  Future<List<KkUser>> following(String id) async {
+  /// 游标分页语义同 [followers]。
+  Future<UserPage> following(String id, {int limit = 20, String? cursor}) async {
     try {
-      final resp = await _dio.get<dynamic>('/users/$id/following');
-      return _parseUserList(resp.data);
+      final qp = <String, dynamic>{'page_size': limit};
+      if (cursor != null && cursor.isNotEmpty) qp['cursor'] = cursor;
+      final resp =
+          await _dio.get<dynamic>('/users/$id/following', queryParameters: qp);
+      return _parseUserPage(resp.data, limit);
     } on DioException catch (e) {
       throw AppException.fromDio(e);
     }
@@ -130,7 +153,7 @@ class UsersApi {
   /// 解析 { items:[UserBrief], next_cursor, has_more } 或裸数组 → List<KkUser>。
   /// UserBrief = { id, nickname, avatar_url, role } → KkUser(id/name=nickname/avatar=avatar_url)。
   /// role 暂不存（前端 KkUser 无此字段，Phase 5 加角色徽章时再扩）。
-  List<KkUser> _parseUserList(dynamic data) {
+  List<KkUser> _parseUsers(dynamic data) {
     final raw = data is Map
         ? (data['items'] ?? const <dynamic>[])
         : (data ?? const <dynamic>[]);
@@ -150,6 +173,27 @@ class UsersApi {
       out.add(user);
     }
     return out;
+  }
+
+  /// 解析分页信封 {items, next_cursor, has_more} 或裸数组 → [UserPage]。
+  /// 无 next_cursor/has_more 时：hasMore = users.length >= limit（启发式）。
+  UserPage _parseUserPage(dynamic data, int limit) {
+    final users = _parseUsers(data);
+    String? nextCursor;
+    bool hasMore;
+    if (data is Map) {
+      final nc = data['next_cursor'];
+      nextCursor = nc is String && nc.isNotEmpty ? nc : null;
+      final hm = data['has_more'];
+      hasMore = hm is bool ? hm : users.length >= limit;
+    } else {
+      hasMore = users.length >= limit;
+    }
+    return UserPage(
+      users: users,
+      nextCursor: nextCursor,
+      hasMore: hasMore,
+    );
   }
 
   int _readInt(dynamic v) {
@@ -185,16 +229,19 @@ final remoteUserPublicProvider =
   return ref.watch(usersApiProvider).userPublic(id);
 });
 
-/// 远程用户粉丝列表（GET /users/{id}/followers）。
+/// 远程用户粉丝列表（GET /users/{id}/followers，首页 cursor=null）。
 /// watch followedUserIds.contains(id)：我关注/取关该用户 → 我从 ta 的粉丝列表
 /// 加入/退出，provider 重建重拉。
+/// P0-1 收口：本 provider 仅给 follows_screen Tab 计数等「快取首页长度」场景用；
+/// 列表体无限滚动改用 paginatedFollowersProvider（同源 cursor=null 首页 + 后续页）。
 final remoteFollowersProvider =
     FutureProvider.autoDispose.family<List<KkUser>, String>((ref, id) async {
   ref.watch(appStateProvider.select((s) => s.followedUserIds.contains(id)));
-  return ref.watch(usersApiProvider).followers(id);
+  final page = await ref.watch(usersApiProvider).followers(id);
+  return page.users;
 });
 
-/// 远程用户关注列表（GET /users/{id}/following）。
+/// 远程用户关注列表（GET /users/{id}/following，首页 cursor=null）。
 /// 若 id 是当前登录用户，watch followedUserIds.length：我关注/取关别人 → 我的
 /// following 列表变，provider 重建重拉。他人 following 列表与本地状态无关，不订阅。
 final remoteFollowingProvider =
@@ -203,5 +250,6 @@ final remoteFollowingProvider =
   if (myId != null && myId == id) {
     ref.watch(appStateProvider.select((s) => s.followedUserIds.length));
   }
-  return ref.watch(usersApiProvider).following(id);
+  final page = await ref.watch(usersApiProvider).following(id);
+  return page.users;
 });

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/storage/local_store.dart';
 import '../core/utils/backend_id.dart';
+import '../data/api/comments_api.dart';
 import '../data/api/interactions_api.dart';
 import '../data/api/posts_api.dart';
 import '../data/seed/mock_seed.dart';
@@ -148,6 +149,38 @@ class AppStateNotifier extends Notifier<AppStateData> {
     final next = Set<String>.from(state.likedItemIds);
     if (!next.add(id)) next.remove(id);
     state = state.copyWith(likedItemIds: next);
+  }
+
+  /// 评论点赞（双轨）：乐观 toggle likedItemIds；登录 + 真后端评论(UUID)→ 同步后端、失败回滚。
+  /// mock 评论(短 id)本地即真源。comment_thread 的点赞按钮走这个（统一 mock/remote，
+  /// P0-1 收口：远程 likedIds 由 paginated_comments_provider.fetchPage mergeLikedIds 并入，
+  /// 本方法只负责 toggle + 后端同步）。
+  void toggleCommentLike(String commentId) {
+    final wasLiked = state.likedItemIds.contains(commentId);
+    final next = Set<String>.from(state.likedItemIds);
+    if (wasLiked) {
+      next.remove(commentId);
+    } else {
+      next.add(commentId);
+    }
+    state = state.copyWith(likedItemIds: next);
+    _syncCommentLike(commentId, on: !wasLiked);
+  }
+
+  Future<void> _syncCommentLike(String commentId, {required bool on}) async {
+    if (!ref.read(authProvider).isLoggedIn) return;
+    if (!looksLikeBackendId(commentId)) return;
+    try {
+      await ref.read(commentsApiProvider).setLike(commentId, on);
+    } catch (_) {
+      final revert = Set<String>.from(state.likedItemIds);
+      if (on) {
+        revert.remove(commentId);
+      } else {
+        revert.add(commentId);
+      }
+      state = state.copyWith(likedItemIds: revert);
+    }
   }
 
   /// 动态点赞（双轨）：乐观 toggle likedItemIds；登录 + 真后端动态(UUID)→ 同步后端、失败回滚。

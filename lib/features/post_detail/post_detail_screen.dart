@@ -318,6 +318,9 @@ class PostDetailScreen extends ConsumerWidget {
           initialComments: comments,
           showInput: true,
           showHeader: true,
+          // P0-1 收口:动态详情内联在 ListView 里,父级提供滚动 →
+          // inlineInScroll: true(Column 渲染,首屏一页,发评论/删评论后 refresh 重拉)。
+          inlineInScroll: true,
           // 任务⑨:长按 → 动作 sheet 收进 CommentThread 内部(_showActions),
           // 接通复制/编辑(own)/删除(own)/打开链接。不再外部传 onCommentLongPress。
         ),

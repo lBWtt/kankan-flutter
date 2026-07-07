@@ -59,24 +59,39 @@ int _parseMs(dynamic iso) {
   return DateTime.now().millisecondsSinceEpoch;
 }
 
-/// 一次评论列表拉取的结果：评论树 + 当前用户已赞的评论 id 集合。
+/// 一次评论列表拉取的结果：评论树 + 当前用户已赞的评论 id 集合 + 下一页游标 + hasMore。
+/// 后端返回 {items, next_cursor, has_more}；无游标时 hasMore 按 comments.length>=limit 推断
+/// （与 posts_api._parsePage 启发式一致）。replies 跟随父评论一次返回，不对 replies 分页。
 class CommentList {
   final List<Comment> comments;
   final Set<String> likedIds;
-  const CommentList(this.comments, this.likedIds);
+  final String? nextCursor;
+  final bool hasMore;
+  const CommentList({
+    required this.comments,
+    required this.likedIds,
+    required this.nextCursor,
+    required this.hasMore,
+  });
 }
 
 class CommentsApi {
   final Dio _dio;
   CommentsApi(this._dio);
 
-  /// GET /comments?host_type=&host_id= → 顶级评论（含楼中楼）+ 已赞集合。
-  Future<CommentList> list(String hostType, String hostId) async {
+  /// GET /comments?host_type=&host_id= → 顶级评论（含楼中楼）+ 已赞集合 + 分页元信息。
+  /// 游标分页：[cursor]=null 拉首页；非 null 拉下一页。
+  /// 评论是树形（replies 嵌套），分页只对顶层评论分页，replies 跟随父评论一次返回。
+  Future<CommentList> list(String hostType, String hostId,
+      {int limit = 30, String? cursor}) async {
     try {
-      final resp = await _dio.get<dynamic>('/comments', queryParameters: {
+      final qp = <String, dynamic>{
         'host_type': hostType,
         'host_id': hostId,
-      });
+        'page_size': limit,
+      };
+      if (cursor != null && cursor.isNotEmpty) qp['cursor'] = cursor;
+      final resp = await _dio.get<dynamic>('/comments', queryParameters: qp);
       final data = resp.data;
       final raw = data is Map ? (data['items'] ?? const <dynamic>[]) : const <dynamic>[];
       final items = raw is List ? raw : const <dynamic>[];
@@ -85,7 +100,22 @@ class CommentsApi {
           .whereType<Map<dynamic, dynamic>>()
           .map((m) => _commentFromJson(Map<String, dynamic>.from(m), liked))
           .toList();
-      return CommentList(comments, liked);
+      String? nextCursor;
+      bool hasMore;
+      if (data is Map) {
+        final nc = data['next_cursor'];
+        nextCursor = nc is String && nc.isNotEmpty ? nc : null;
+        final hm = data['has_more'];
+        hasMore = hm is bool ? hm : comments.length >= limit;
+      } else {
+        hasMore = comments.length >= limit;
+      }
+      return CommentList(
+        comments: comments,
+        likedIds: liked,
+        nextCursor: nextCursor,
+        hasMore: hasMore,
+      );
     } on DioException catch (e) {
       throw AppException.fromDio(e);
     }

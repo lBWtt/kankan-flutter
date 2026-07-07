@@ -85,4 +85,14 @@ abstract class PaginatedNotifier<T> extends Notifier<PaginatedState<T>> {
       state = state.copyWith(isLoadingMore: false, error: e);
     }
   }
+
+  /// 乐观移除一个 item（按 [idOf] 匹配）。发评论 / 删评论等本地即时反馈用。
+  /// 不触发网络请求；调用方负责后续 [refresh] / 后端同步 + 失败时 refresh 回滚。
+  /// 用于 CommentThread 删评论：先本地移除给即时反馈，再 await 后端 delete，
+  /// 失败时 refresh 重拉恢复。
+  void removeItem(String id) {
+    final next = state.items.where((x) => idOf(x) != id).toList();
+    if (next.length == state.items.length) return; // 没找到，no-op
+    state = state.copyWith(items: next);
+  }
 }

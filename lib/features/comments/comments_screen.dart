@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/utils/backend_id.dart';
 import '../../core/widgets/kk_back_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
@@ -58,6 +60,12 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
 
     final sorted = _sort(comments);
 
+    // P0-1 收口:remote 模式下 commentsFor 返回空(mock 数据不含远程宿主评论),
+    // 空状态交给 CommentThread 的 paginated provider 判定(loading → 空 + isLoading,
+    // data 空 → _emptyHint)。mock 模式保留原瞬时空状态(无 loading 闪烁)。
+    final isRemote =
+        AppConfig.useRemote && looksLikeBackendId(widget.hostId);
+
     return Scaffold(
       backgroundColor: KkColors.bg,
       appBar: AppBar(
@@ -66,8 +74,11 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
         scrolledUnderElevation: 0,
         leading: const KkBackButton(),
         titleSpacing: 0,
+        // P0-1 收口:remote 模式 sorted(mock commentsFor)恒空 → 不显数字避免误导;
+        // mock 模式显真实 mock 评论数。remote 的真实总数需后端 total 字段(暂未提供),
+        // 列表体用 paginated provider 分页加载。
         title: Text(
-          '心得 ${sorted.length}',
+          isRemote ? '心得' : '心得 ${sorted.length}',
           style: KkType.h3,
         ),
         actions: [
@@ -102,7 +113,7 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
             ),
         ],
       ),
-      body: sorted.isEmpty
+      body: (!isRemote && sorted.isEmpty)
           ? const Center(
               child: EmptyState(
                 variant: EmptyStateVariant.generic,
@@ -111,16 +122,19 @@ class _CommentsScreenState extends ConsumerState<CommentsScreen> {
             )
           : SafeArea(
               top: false,
-              child: SingleChildScrollView(
-                child: CommentThread(
-                  hostType: widget.hostType,
-                  hostId: widget.hostId,
-                  initialComments: sorted,
-                  showInput: true,
-                  showHeader: false,
-                  // 任务⑨:长按 → 动作 sheet 收进 CommentThread 内部(_showActions),
-                  // 接通复制/编辑(own)/删除(own)/打开链接。不再外部传 onCommentLongPress。
-                ),
+              // P0-1 收口:全屏评论页给 CommentThread 自己的滚动容器
+              // (inlineInScroll: false → ListView.builder + InfiniteScroll +
+              // LoadMoreIndicator),支持游标分页无限滚动。原 SingleChildScrollView
+              // 包装移除(避免与 CommentThread 内部 ListView 嵌套滚动)。
+              child: CommentThread(
+                hostType: widget.hostType,
+                hostId: widget.hostId,
+                initialComments: sorted,
+                showInput: true,
+                showHeader: false,
+                inlineInScroll: false,
+                // 任务⑨:长按 → 动作 sheet 收进 CommentThread 内部(_showActions),
+                // 接通复制/编辑(own)/删除(own)/打开链接。不再外部传 onCommentLongPress。
               ),
             ),
     );
