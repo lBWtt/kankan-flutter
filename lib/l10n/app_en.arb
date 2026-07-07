@@ -40,28 +40,315 @@
   "@confirm": { "description": "Confirm dialog primary button." },
   "retry": "Retry",
   "@retry": { "description": "Error state retry button (RemoteError)." },
+  "edit": "Edit",
+  "@edit": { "description": "Edit action (profile, comment own, etc.)." },
+  "copy": "Copy",
+  "@copy": { "description": "Copy action (code block, text take, etc.)." },
+  "done": "Done",
+  "@done": { "description": "Done action (dialog, input completion, etc.)." },
+  "refresh": "Refresh",
+  "@refresh": { "description": "Refresh action (pull-to-refresh hint, recommend shuffle icon alt)." },
+  "back": "Back",
+  "@back": { "description": "Back action (back button semanticLabel, post_detail back button text)." },
+  "more": "More",
+  "@more": { "description": "More action (top bar more_horiz icon semanticLabel)." },
+  "report": "Report",
+  "@report": { "description": "Report action (more sheet report item)." },
+  "block": "Block",
+  "@block": { "description": "Block author action (profile more sheet)." },
+  "loadMore": "Load more",
+  "@loadMore": { "description": "Load more text (infinite scroll bottom indicator)." },
+  "remove": "Remove",
+  "@remove": { "description": "Remove action (chip close button semanticLabel)." },
+  "clearAll": "Clear all",
+  "@clearAll": { "description": "Clear all action (history/cache section action)." },
 
   "ranking": "Rankings",
   "@ranking": { "description": "Kankan screen top bar ranking icon semanticLabel." },
 
+  "loading": "Loading",
+  "@loading": { "description": "Loading text." },
+  "empty": "Empty",
+  "@empty": { "description": "Generic empty text (short)." },
+  "error": "Error",
+  "@error": { "description": "Generic error text (short)." },
+  "offline": "Offline",
+  "@offline": { "description": "Offline state text." },
+  "success": "Success",
+  "@success": { "description": "Operation success snackbar fallback." },
+  "failed": "Failed",
+  "@failed": { "description": "Operation failed snackbar fallback." },
+  "networkError": "Network error",
+  "@networkError": { "description": "Network error snackbar/error text." },
+
   "emptyFeed": "Nothing here yet",
-  "@emptyFeed": { "description": "Feed empty state (discover/kankan)." },
-  "emptyGeneric": "Nothing found",
-  "@emptyGeneric": { "description": "Generic empty state (EmptyState generic variant)." },
-  "emptySearch": "No results found",
+  "@emptyFeed": { "description": "Feed empty state (discover recommend/following feed)." },
+  "emptyGeneric": "Nothing here",
+  "@emptyGeneric": { "description": "Generic empty state (EmptyState generic variant; kankan no projects / topic empty)." },
+  "emptySearch": "No results",
   "@emptySearch": { "description": "Search empty state." },
+  "emptySaved": "Nothing saved yet",
+  "@emptySaved": { "description": "Saved empty state (EmptyState saved variant title)." },
+  "emptyTakeaway": "No saved takeaways yet",
+  "@emptyTakeaway": { "description": "Takeaway empty state (EmptyState takeaway variant title)." },
+  "emptyFollowers": "Not following anyone yet",
+  "@emptyFollowers": { "description": "Followers empty state (EmptyState followers variant title)." },
 
   "loadFailed": "Failed to load",
   "@loadFailed": { "description": "Load failed fallback message." },
   "connectFailed": "Cannot reach server",
   "@connectFailed": { "description": "Remote data load failed message (RemoteError message)." },
+  "errorLoad": "Failed to load",
+  "@errorLoad": { "description": "Generic load failed text (RemoteError default message)." },
+  "errorNetwork": "Cannot reach server",
+  "@errorNetwork": { "description": "Network error text (paginated feed first-screen failure)." },
+  "retryButton": "Retry",
+  "@retryButton": { "description": "Error state retry button text (RemoteError internal button)." },
 
   "projectSemantic": "Project: {title}",
   "@projectSemantic": {
-    "description": "Project card accessibility label (screen reader announces 'Project: <title>'). Placeholder {title} replaced with project title."
+    "description": "Project card accessibility label (screen reader announces 'Project: <title>'). Placeholder {title} replaced with project title.",
+    "placeholders": {
+      "title": { "type": "String" }
+    }
   },
   "postSemantic": "Post: {author}",
   "@postSemantic": {
-    "description": "Post card accessibility label. Placeholder {author} replaced with author name."
-  }
+    "description": "Post card accessibility label. Placeholder {author} replaced with author name.",
+    "placeholders": {
+      "author": { "type": "String" }
+    }
+  },
+
+  "postCount": "{n} posts",
+  "@postCount": {
+    "description": "Post count text (profile tab, topic tile count row). Placeholder {n} replaced with integer.",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "followerCount": "{n} followers",
+  "@followerCount": {
+    "description": "Follower count text. Placeholder {n} replaced with integer.",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "followingCount": "{n} following",
+  "@followingCount": {
+    "description": "Following count text. Placeholder {n} replaced with integer.",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "likeCount": "{n} likes",
+  "@likeCount": {
+    "description": "Like count text (me/profile/recommend card). Placeholder {n} replaced with integer.",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "commentCount": "{n} comments",
+  "@commentCount": {
+    "description": "Comment count text. Placeholder {n} replaced with integer.",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "viewCount": "{n} views",
+  "@viewCount": {
+    "description": "View count text. Placeholder {n} replaced with integer.",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "takeawayCount": "{n} takeaways",
+  "@takeawayCount": {
+    "description": "Takeaway count text. Placeholder {n} replaced with integer.",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "wantHowToCount": "{n} want to know",
+  "@wantHowToCount": {
+    "description": "'N people want to know' count (detail screen clue entry). Placeholder {n} replaced with integer.",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "replyToName": "Reply to {name}",
+  "@replyToName": {
+    "description": "'Reply to {name}' comment input placeholder. Placeholder {name} replaced with repliee nickname.",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
+  "justNow": "Just now",
+  "@justNow": { "description": "Relative time text 'Just now' (aligned with time_ago)." },
+  "minutesAgo": "{n} min ago",
+  "@minutesAgo": {
+    "description": "Relative time text 'N min ago'. Placeholder {n} replaced with integer.",
+    "placeholders": { "n": {} }
+  },
+  "hoursAgo": "{n} hr ago",
+  "@hoursAgo": {
+    "description": "Relative time text 'N hr ago'. Placeholder {n} replaced with integer.",
+    "placeholders": { "n": {} }
+  },
+  "yesterday": "Yesterday",
+  "@yesterday": { "description": "Relative time text 'Yesterday' (also used as notifications/search time bucket title)." },
+  "daysAgo": "{n} days ago",
+  "@daysAgo": {
+    "description": "Relative time text 'N days ago'. Placeholder {n} replaced with integer.",
+    "placeholders": { "n": {} }
+  },
+  "weeksAgo": "{n} weeks ago",
+  "@weeksAgo": {
+    "description": "Relative time text 'N weeks ago'. Placeholder {n} replaced with integer.",
+    "placeholders": { "n": {} }
+  },
+  "monthsAgo": "{n} months ago",
+  "@monthsAgo": {
+    "description": "Relative time text 'N months ago'. Placeholder {n} replaced with integer.",
+    "placeholders": { "n": {} }
+  },
+  "today": "Today",
+  "@today": { "description": "Time bucket title 'Today' (notifications/search)." },
+  "thisWeek": "This week",
+  "@thisWeek": { "description": "Time bucket title 'This week' (notifications)." },
+  "earlier": "Earlier",
+  "@earlier": { "description": "Time bucket title 'Earlier' (notifications/search)." },
+
+  "discoverTitle": "Discover",
+  "@discoverTitle": { "description": "Discover screen top bar title." },
+  "todayTopic": "Today's topics",
+  "@todayTopic": { "description": "Discover screen recommend feed top 'Today's topics' strip title." },
+  "recommendFeed": "For you",
+  "@recommendFeed": { "description": "Discover screen recommend feed tab label." },
+  "followingFeed": "Following",
+  "@followingFeed": { "description": "Discover screen following feed tab label." },
+  "topicPlaza": "Topics",
+  "@topicPlaza": { "description": "Topic plaza entry (discover screen + topic plaza screen title)." },
+
+  "kankanTitle": "Kankan",
+  "@kankanTitle": { "description": "Kankan screen top bar title." },
+  "rankingUpdated": "Updated hourly",
+  "@rankingUpdated": { "description": "Ranking screen update description." },
+  "rankingBasis": "Sorted by likes",
+  "@rankingBasis": { "description": "Ranking screen sort description." },
+  "changeBatch": "Shuffle",
+  "@changeBatch": { "description": "'Shuffle' recommend strip refresh button (kankan _RecommendStrip)." },
+  "becauseYouViewed": "Because you viewed ",
+  "@becauseYouViewed": { "description": "'Because you viewed X' recommend strip prefix (trailing space for project title concatenation)." },
+
+  "libraryTitle": "Library",
+  "@libraryTitle": { "description": "Library screen top bar title." },
+  "savedProjects": "Saved",
+  "@savedProjects": { "description": "Library tab 1 label (saved projects)." },
+  "savedTakeaways": "Takeaways",
+  "@savedTakeaways": { "description": "Library tab 2 label (my saved takeaways)." },
+
+  "meTitle": "Me",
+  "@meTitle": { "description": "Me screen top bar title (currently not rendered, blank above banner)." },
+  "myPosts": "My posts",
+  "@myPosts": { "description": "Me screen 'My posts' section title." },
+  "editProfile": "Edit profile",
+  "@editProfile": { "description": "Edit profile button/title (me, profile, profile_edit)." },
+  "settings": "Settings",
+  "@settings": { "description": "Settings entry / settings screen title." },
+  "logout": "Log out",
+  "@logout": { "description": "Log out action (more sheet, settings)." },
+  "myContribution": "My contribution",
+  "@myContribution": { "description": "Me screen 'My contribution' card title." },
+  "followedDomains": "Domains I follow",
+  "@followedDomains": { "description": "Me screen 'Domains I follow' section title." },
+  "followedTopics": "Topics I follow",
+  "@followedTopics": { "description": "Me screen 'Topics I follow' section title." },
+  "recentlyViewed": "Recently viewed",
+  "@recentlyViewed": { "description": "Me screen 'Recently viewed' section title." },
+  "viewAll": "View all",
+  "@viewAll": { "description": "'View all' section action (my posts)." },
+  "adjust": "Adjust",
+  "@adjust": { "description": "'+Adjust' chip text (followed domains trailing ghost chip)." },
+  "clear": "Clear",
+  "@clear": { "description": "'Clear' section action (recently viewed / clear entry outside mark-all-read)." },
+  "changeAvatar": "Change avatar",
+  "@changeAvatar": { "description": "profile_edit avatar area 'Change avatar' button." },
+  "loginRegister": "Log in / Sign up",
+  "@loginRegister": { "description": "Not-logged-in 'Log in / Sign up' entry (me / settings)." },
+
+  "wantHowTo": "How to make it",
+  "@wantHowTo": { "description": "Detail screen clue entry title text." },
+  "deleteThisProject": "Delete this project?",
+  "@deleteThisProject": { "description": "Detail screen delete-own-project confirm dialog content." },
+  "projectNotExist": "Project not found",
+  "@projectNotExist": { "description": "Detail screen load-project-null fallback text." },
+  "postNotExist": "Post does not exist or has been deleted",
+  "@postNotExist": { "description": "Post detail screen load-post-null EmptyState title." },
+  "commentsLabel": "Notes",
+  "@commentsLabel": { "description": "'Notes' short text (detail bottom bar 'Notes N' prefix, CommentThread header)." },
+  "takeaway": "Take",
+  "@takeaway": { "description": "'Take' short text (action chip fallback label)." },
+  "howToUse": "How to use",
+  "@howToUse": { "description": "'How to use' action chip fallback label." },
+  "codeBlock": "Code",
+  "@codeBlock": { "description": "'Code' io block title." },
+  "videoBlock": "Video",
+  "@videoBlock": { "description": "'Video' io block title." },
+  "fileDownload": "File download",
+  "@fileDownload": { "description": "'File download' action chip fallback label." },
+  "flowCompare": "Flow comparison",
+  "@flowCompare": { "description": "'Flow comparison' io block title." },
+
+  "composePost": "New post",
+  "@composePost": { "description": "publish_entry_sheet 'New post' entry title." },
+  "publishProject": "New project",
+  "@publishProject": { "description": "publish_entry_sheet 'New project' entry title." },
+  "titlePlaceholder": "Title",
+  "@titlePlaceholder": { "description": "publish screen title input placeholder." },
+  "summaryPlaceholder": "One-line value",
+  "@summaryPlaceholder": { "description": "publish screen one-line value input placeholder." },
+  "contentPlaceholder": "What's on your mind…",
+  "@contentPlaceholder": { "description": "compose screen content input placeholder." },
+  "authorNotePlaceholder": "Author's note",
+  "@authorNotePlaceholder": { "description": "publish screen author note input placeholder." },
+  "topicPlaceholder": "# Topic (press Enter)",
+  "@topicPlaceholder": { "description": "publish screen topic input placeholder." },
+  "addMaterial": "Add takeaway",
+  "@addMaterial": { "description": "publish screen '+ Add takeaway' button." },
+  "saveAction": "Save",
+  "@saveAction": { "description": "Save action (profile_edit top bar 'Save' button)." },
+  "restore": "Restore",
+  "@restore": { "description": "Draft banner 'Restore' button." },
+  "ignore": "Dismiss",
+  "@ignore": { "description": "Draft banner 'Dismiss' button." },
+  "draftRestore": "Restore last draft?",
+  "@draftRestore": { "description": "Draft restore banner main text." },
+  "quoteProject": "Quote project",
+  "@quoteProject": { "description": "compose screen 'Quote project' section / sheet title." },
+  "publishHintPost": "Text + images + topics + quote",
+  "@publishHintPost": { "description": "publish_entry_sheet 'New post' entry subtitle." },
+  "publishHintProject": "Outcomes + takeaways",
+  "@publishHintProject": { "description": "publish_entry_sheet 'New project' entry subtitle." },
+
+  "searchHint": "Search",
+  "@searchHint": { "description": "Search input placeholder." },
+  "recentSearches": "Recent searches",
+  "@recentSearches": { "description": "Search screen 'Recent searches' section title." },
+  "clearHistory": "Clear",
+  "@clearHistory": { "description": "Search screen 'Clear' search history button." },
+  "hotSearch": "Trending topics",
+  "@hotSearch": { "description": "Search screen 'Trending topics' section title." },
+  "noResult": "None",
+  "@noResult": { "description": "Fallback text when search suggestions or trending topics are empty." },
+
+  "writeComment": "Write a comment…",
+  "@writeComment": { "description": "Comment input placeholder." },
+  "replyTo": "Reply",
+  "@replyTo": { "description": "'Reply' short text (comment action)." },
+  "commentDeleted": "Comment deleted",
+  "@commentDeleted": { "description": "Placeholder text after a comment is deleted." },
+  "commentEdited": "Edited",
+  "@commentEdited": { "description": "'Edited' marker for edited comments." }
 }

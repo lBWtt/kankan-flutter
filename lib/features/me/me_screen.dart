@@ -14,6 +14,7 @@ import '../../data/seed/mock_seed.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../l10n/kk_strings.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/project_provider.dart';
@@ -48,6 +49,7 @@ class MeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(kkStringsProvider);
     final mockMe = ref.watch(userByIdProvider('me'));
     final auth = ref.watch(authProvider);
     final projectRepo = ref.watch(projectRepositoryProvider);
@@ -109,7 +111,7 @@ class MeScreen extends ConsumerWidget {
           onTapFollowing: () => context.push(KkRoutes.follows(followsTargetId)),
           onTapFollowers: () =>
               context.push(KkRoutes.follows(followsTargetId)),
-          fourthStatLabel: '收藏',
+          fourthStatLabel: s.save,
           fourthStatValue: savedCount,
           onTapFourthStat: () => context.go(KkRoutes.library),
           // 换背景:image_picker 选图 → 存 app_state(会话内有效,web 是 blob URL)。
@@ -133,26 +135,26 @@ class MeScreen extends ConsumerWidget {
             ),
             borderRadius: BorderRadius.circular(KkRadius.sm),
             child: Text(
-              isLoggedIn ? '编辑资料' : '登录 / 注册',
+              isLoggedIn ? s.editProfile : s.loginRegister,
               style: KkType.bodySm.copyWith(color: KkColors.teal),
             ),
           ),
         ),
         const SizedBox(height: KkSpacing.xl),
         // 5. 我的贡献卡(整卡 → activity)
-        _contributionCard(context),
+        _contributionCard(context, s),
         const SizedBox(height: KkSpacing.xl),
         // 我发布的(横向小卡,空态零旁白)
-        _myPostsSection(context, ref),
+        _myPostsSection(context, ref, s),
         const SizedBox(height: KkSpacing.xl),
         // 6. 我关注的领域
-        _followedDomainsSection(context),
+        _followedDomainsSection(context, s),
         const SizedBox(height: KkSpacing.xl),
         // 7. 我关注的话题
-        _followedTopicsSection(context),
+        _followedTopicsSection(context, s),
         const SizedBox(height: KkSpacing.xl),
         // 8. 最近看过 + 清空
-        _recentlyViewedSection(context, ref, recentProjects),
+        _recentlyViewedSection(context, ref, s, recentProjects),
       ],
     );
   }
@@ -175,9 +177,11 @@ class MeScreen extends ConsumerWidget {
   // 零旁白:只列动作「清空最近看过?」+ 清空/取消,不写后果。确定 teal(非 take,
   // 清空是中性操作,coral 只给 take/删除)。
   Future<void> _confirmClearBrowse(BuildContext context, WidgetRef ref) async {
+    final s = ref.watch(kkStringsProvider);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        // TODO(i18n): 迁移到 KkStrings — '清空最近看过?'
         content: const Text('清空最近看过？'),
         contentTextStyle: KkType.body.copyWith(color: KkColors.t1),
         actionsPadding: const EdgeInsets.symmetric(
@@ -187,11 +191,11 @@ class MeScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('取消', style: KkType.bodySm.copyWith(color: KkColors.t3)),
+            child: Text(s.cancel, style: KkType.bodySm.copyWith(color: KkColors.t3)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('清空', style: KkType.bodySm.copyWith(color: KkColors.teal)),
+            child: Text(s.clear, style: KkType.bodySm.copyWith(color: KkColors.teal)),
           ),
         ],
       ),
@@ -199,6 +203,7 @@ class MeScreen extends ConsumerWidget {
     if (ok == true) {
       ref.read(appStateProvider.notifier).clearBrowseHistory();
       final messenger = ScaffoldMessenger.maybeOf(context);
+      // TODO(i18n): 迁移到 KkStrings — '已清空'
       messenger?.showSnackBar(
         const SnackBar(
           content: Text('已清空'),
@@ -212,7 +217,7 @@ class MeScreen extends ConsumerWidget {
   // ──────────────────────────────────────────────────────────────────
   // 5. 我的贡献 卡片(白卡 + bare 热力图嵌入,整卡 → activity)
   // ──────────────────────────────────────────────────────────────────
-  Widget _contributionCard(BuildContext context) {
+  Widget _contributionCard(BuildContext context, KkStrings s) {
     // 真实总贡献数 = cells 里所有 level 之和(非 ×N 编造,任务⑯口径)
     final totalContributions =
         mockHeatmapCells.fold<int>(0, (s, c) => s + c.level);
@@ -233,8 +238,9 @@ class MeScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Text('我的贡献', style: KkType.h3),
+                Text(s.myContribution, style: KkType.h3),
                 const Spacer(),
+                // TODO(i18n): 迁移到 KkStrings — '近 26 周 · 共 N 次贡献'
                 Text(
                   '近 26 周 · 共 $totalContributions 次贡献',
                   style: KkType.mono.copyWith(color: KkColors.t3, fontSize: 11),
@@ -261,7 +267,7 @@ class MeScreen extends ConsumerWidget {
   // ──────────────────────────────────────────────────────────────────
   // 项目用 projectRepo.byAuthor('me'),复用「最近看过」小卡视觉(_recentProjectCard)。
   // 真实计数,禁编造。空态:「还没有发布」(零旁白,不写"快去发布"引导)。
-  Widget _myPostsSection(BuildContext context, WidgetRef ref) {
+  Widget _myPostsSection(BuildContext context, WidgetRef ref, KkStrings s) {
     final projectRepo = ref.watch(projectRepositoryProvider);
     final myProjects = projectRepo.byAuthor('me');
     return Padding(
@@ -271,7 +277,7 @@ class MeScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Text('我发布的', style: KkType.h3),
+              Text(s.myPosts, style: KkType.h3),
               const Spacer(),
               if (myProjects.isNotEmpty)
                 Tappable(
@@ -286,7 +292,7 @@ class MeScreen extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '查看全部',
+                          s.viewAll,
                           style: KkType.bodySm.copyWith(color: KkColors.t3),
                         ),
                         const SizedBox(width: 2),
@@ -300,6 +306,7 @@ class MeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: KkSpacing.md),
           if (myProjects.isEmpty)
+            // TODO(i18n): 迁移到 KkStrings — '还没有发布'
             Text(
               '还没有发布',
               style: KkType.bodySm.copyWith(color: KkColors.t3),
@@ -313,7 +320,7 @@ class MeScreen extends ConsumerWidget {
                 itemCount: myProjects.length,
                 separatorBuilder: (_, __) =>
                     const SizedBox(width: KkSpacing.md),
-                itemBuilder: (ctx, i) => _recentProjectCard(ctx, myProjects[i]),
+                itemBuilder: (ctx, i) => _recentProjectCard(ctx, s, myProjects[i]),
               ),
             ),
         ],
@@ -324,13 +331,13 @@ class MeScreen extends ConsumerWidget {
   // ──────────────────────────────────────────────────────────────────
   // 6. 我关注的领域(chip 排 + "+调整")
   // ──────────────────────────────────────────────────────────────────
-  Widget _followedDomainsSection(BuildContext context) {
+  Widget _followedDomainsSection(BuildContext context, KkStrings s) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('我关注的领域', style: KkType.h3),
+          Text(s.followedDomains, style: KkType.h3),
           const SizedBox(height: KkSpacing.md),
           // 任务⑩B:领域 chip 统一用 KkChip.solid(mint+teal);
           // "+调整"做成末尾幽灵 chip(KkChip.ghost + add 图标),
@@ -343,7 +350,7 @@ class MeScreen extends ConsumerWidget {
               for (final d in mockFollowedDomains)
                 KkChip.solid(label: _domainLabel(d)),
               KkChip.ghost(
-                label: '调整',
+                label: s.adjust,
                 icon: Icons.add,
                 onTap: () => context.push(KkRoutes.profileEdit),
               ),
@@ -355,6 +362,7 @@ class MeScreen extends ConsumerWidget {
   }
 
   /// 7 领域值 → 中文标签(与 profile_edit._domainOptions 同源)。
+  // TODO(i18n): 迁移到 KkStrings — 'AI图' / 'AI视频' / '网页' / 'App' / '工具' / '开源' / 'Prompt'
   String _domainLabel(String value) {
     const map = <String, String>{
       'ai_image': 'AI图',
@@ -371,15 +379,16 @@ class MeScreen extends ConsumerWidget {
   // ──────────────────────────────────────────────────────────────────
   // 7. 我关注的话题(chip 排 / 空态)
   // ──────────────────────────────────────────────────────────────────
-  Widget _followedTopicsSection(BuildContext context) {
+  Widget _followedTopicsSection(BuildContext context, KkStrings s) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('我关注的话题', style: KkType.h3),
+          Text(s.followedTopics, style: KkType.h3),
           const SizedBox(height: KkSpacing.md),
           if (mockFollowedTopics.isEmpty)
+            // TODO(i18n): 迁移到 KkStrings — '# 还没有关注的话题'
             Text(
               '# 还没有关注的话题',
               style: KkType.bodySm.copyWith(color: KkColors.t3),
@@ -407,7 +416,7 @@ class MeScreen extends ConsumerWidget {
   // 8. 最近看过 + 清空(横向小卡)
   // ──────────────────────────────────────────────────────────────────
   Widget _recentlyViewedSection(
-      BuildContext context, WidgetRef ref, List<Project> recent) {
+      BuildContext context, WidgetRef ref, KkStrings s, List<Project> recent) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       child: Column(
@@ -415,7 +424,7 @@ class MeScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Text('最近看过', style: KkType.h3),
+              Text(s.recentlyViewed, style: KkType.h3),
               const Spacer(),
               if (recent.isNotEmpty)
                 Tappable(
@@ -428,7 +437,7 @@ class MeScreen extends ConsumerWidget {
                       vertical: 4,
                     ),
                     child: Text(
-                      '清空',
+                      s.clear,
                       style: KkType.bodySm.copyWith(color: KkColors.t3),
                     ),
                   ),
@@ -437,6 +446,7 @@ class MeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: KkSpacing.md),
           if (recent.isEmpty)
+            // TODO(i18n): 迁移到 KkStrings — '还没有看过'
             Text(
               '还没有看过',
               style: KkType.bodySm.copyWith(color: KkColors.t3),
@@ -450,7 +460,7 @@ class MeScreen extends ConsumerWidget {
                 itemCount: recent.length,
                 separatorBuilder: (_, __) =>
                     const SizedBox(width: KkSpacing.md),
-                itemBuilder: (ctx, i) => _recentProjectCard(ctx, recent[i]),
+                itemBuilder: (ctx, i) => _recentProjectCard(ctx, s, recent[i]),
               ),
             ),
         ],
@@ -459,7 +469,7 @@ class MeScreen extends ConsumerWidget {
   }
 
   /// 最近看过的小卡(130 宽,封面 84 + 标题/赞数)。
-  Widget _recentProjectCard(BuildContext context, Project project) {
+  Widget _recentProjectCard(BuildContext context, KkStrings s, Project project) {
     return Tappable(
       onTap: () => context.push(KkRoutes.detail(project.id)),
       borderRadius: BorderRadius.circular(KkRadius.md),
@@ -499,7 +509,7 @@ class MeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${formatCount(project.likes)} 赞',
+                    s.likeCount(formatCount(project.likes)),
                     style: KkType.mono.copyWith(fontSize: 10, color: KkColors.t3),
                   ),
                 ],

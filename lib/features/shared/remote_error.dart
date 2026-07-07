@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/tappable.dart';
+import '../../l10n/kk_strings.dart';
 
 /// 远程加载失败统一组件 — B3。
 ///
@@ -19,11 +21,17 @@ import '../../core/widgets/tappable.dart';
 ///
 /// 若 onRetry 触发 provider 重建导致本组件卸载(切到 loading/data 态),
 /// setState 由 mounted 守卫,不报错。
-class RemoteError extends StatefulWidget {
+///
+/// P2-i18n:默认文案 + 重试按钮接 [KkStrings](2024-11 全量迁移)。
+/// 组件从 StatefulWidget 改为 ConsumerStatefulWidget 以 reactive 拿到当前
+/// locale 的字符串。调用方传 [message] 仍可定制具体场景文案(如「榜单加载失败」)。
+class RemoteError extends ConsumerStatefulWidget {
   /// 重试回调。返回 Future 以驱动 loading 态。
   final Future<void> Function() onRetry;
 
-  /// 错误文案(默认「加载失败」)。零旁白:陈述事实,不写「哎呀出错了」。
+  /// 错误文案(默认走 KkStrings.errorLoad「加载失败」)。零旁白:陈述事实,
+  /// 不写「哎呀出错了」。调用方可传如「榜单加载失败」「作品加载失败」等
+  /// 场景化文案(这类场景化文案目前仍硬编码在调用方,逐步迁 KkStrings)。
   final String? message;
 
   const RemoteError({
@@ -33,10 +41,10 @@ class RemoteError extends StatefulWidget {
   });
 
   @override
-  State<RemoteError> createState() => _RemoteErrorState();
+  ConsumerState<RemoteError> createState() => _RemoteErrorState();
 }
 
-class _RemoteErrorState extends State<RemoteError> {
+class _RemoteErrorState extends ConsumerState<RemoteError> {
   bool _loading = false;
 
   Future<void> _handleRetry() async {
@@ -52,6 +60,7 @@ class _RemoteErrorState extends State<RemoteError> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(kkStringsProvider);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: KkSpacing.xxl),
@@ -61,7 +70,7 @@ class _RemoteErrorState extends State<RemoteError> {
             const Icon(Icons.cloud_off_outlined, size: 40, color: KkColors.t4),
             const SizedBox(height: KkSpacing.md),
             Text(
-              widget.message ?? '加载失败',
+              widget.message ?? s.errorLoad,
               style: KkType.body.copyWith(color: KkColors.t3),
               textAlign: TextAlign.center,
             ),
@@ -70,6 +79,7 @@ class _RemoteErrorState extends State<RemoteError> {
               // loading 时禁用(防重复点 + 视觉降权)。
               disabled: _loading,
               onTap: _handleRetry,
+              semanticLabel: s.retryButton,
               borderRadius: BorderRadius.circular(KkRadius.pill),
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -91,7 +101,7 @@ class _RemoteErrorState extends State<RemoteError> {
                         ),
                       )
                     : Text(
-                        '重试',
+                        s.retryButton,
                         style: TextStyle(
                           color: KkColors.teal,
                           fontWeight: FontWeight.w600,

@@ -10,6 +10,7 @@ import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../l10n/kk_strings.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
@@ -59,6 +60,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   Set<String> _initialDomains = const <String>{};
 
   /// 领域 pill 候选 — 对齐 kankan 屏 7 领域(去"全部")
+  // TODO(i18n): 迁移到 KkStrings — 'AI图' / 'AI视频' / '网页' / 'App' / '工具' / '开源' / 'Prompt'
   static const _domainOptions = <(String label, String value)>[
     ('AI图', 'ai_image'),
     ('AI视频', 'ai_video'),
@@ -111,12 +113,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   void _changeAvatar() {
     // Phase 4 接 image_picker
+    // TODO(i18n): 迁移到 KkStrings — '暂未接入'
     _toast('暂未接入');
   }
 
   void _save() {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
+      // TODO(i18n): 迁移到 KkStrings — '名字不能为空'
       _toast('名字不能为空');
       return;
     }
@@ -128,6 +132,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         .updateProfile(name: name, bio: bio.isEmpty ? null : bio);
     // 让依赖 userByIdProvider('me') 的屏(profile / me)重建显示新值。
     ref.invalidate(userByIdProvider('me'));
+    // TODO(i18n): 迁移到 KkStrings — '已保存'
     _toast('已保存');
     if (context.canPop()) {
       context.pop();
@@ -149,6 +154,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(kkStringsProvider);
     final me = ref.watch(userByIdProvider('me'));
     _ensureCtrls(me?.name, me?.bio);
 
@@ -174,7 +180,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         scrolledUnderElevation: 0,
         leading: const KkBackButton(),
         titleSpacing: 0,
-        title: Text('编辑资料', style: KkType.h3),
+        title: Text(s.editProfile, style: KkType.h3),
         actions: [
           Tappable(
             onTap: hasChanges ? _save : null,
@@ -186,7 +192,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 vertical: KkSpacing.sm,
               ),
               child: Text(
-                '保存',
+                s.saveAction,
                 style: TextStyle(
                   color: hasChanges ? KkColors.teal : KkColors.t4,
                   fontSize: 15,
@@ -204,11 +210,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: KkSpacing.xl),
-            _avatarSection(me),
+            _avatarSection(s, me),
             const SizedBox(height: KkSpacing.xl),
             _formCard(),
             const SizedBox(height: KkSpacing.lg),
-            _statsSection(following, followers, totalLikes),
+            _statsSection(s, following, followers, totalLikes),
           ],
         ),
       ),
@@ -216,7 +222,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }
 
   // ── 头像区 ──
-  Widget _avatarSection(KkUser? me) {
+  Widget _avatarSection(KkStrings s, KkUser? me) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -231,7 +237,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
               vertical: KkSpacing.xs,
             ),
             child: Text(
-              '更换头像',
+              s.changeAvatar,
               style: KkType.bodySm.copyWith(color: KkColors.teal),
             ),
           ),
@@ -367,7 +373,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }
 
   // ── 统计区(真实计数,只读,前两项可点跳 follows 屏)──
-  Widget _statsSection(int following, int followers, int totalLikes) {
+  Widget _statsSection(KkStrings s, int following, int followers, int totalLikes) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       padding: const EdgeInsets.symmetric(
@@ -382,19 +388,21 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       child: Row(
         children: [
           Expanded(
-            child: _statBlock('关注', following, onTap: () {
+            child: _statBlock(s.follow, following, onTap: () {
               // 接通 follows 屏(?type= 深链到对应 tab,router 已解析 queryParameters['type'])
               context.push('${KkRoutes.follows('me')}?type=following');
             }),
           ),
           _vDivider(),
           Expanded(
+            // TODO(i18n): 迁移到 KkStrings — '粉丝'
             child: _statBlock('粉丝', followers, onTap: () {
               context.push('${KkRoutes.follows('me')}?type=followers');
             }),
           ),
           _vDivider(),
           Expanded(
+            // TODO(i18n): 迁移到 KkStrings — '获赞'
             child: _statBlock('获赞', totalLikes),
           ),
         ],
