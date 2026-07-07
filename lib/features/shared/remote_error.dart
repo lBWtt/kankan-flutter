@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
-import 'tappable.dart';
+import '../../core/widgets/tappable.dart';
 
 /// 远程加载失败统一组件 — B3。
 ///
