@@ -26,10 +26,9 @@ export 'app_state_data.dart';
 class AppStateNotifier extends Notifier<AppStateData> {
   @override
   AppStateData build() {
-    // P0-2：每次 state 变化自动落盘。fireImmediately 默认 false——初始 state 由
-    // 下面的 loadMerged 返回，listener 在首次 state 赋值后才开始监听后续变化。
-    // 但 loadMerged 返回的初始 state 也应落盘一次（固化首启基线），所以手动补一次。
-    ref.listenSelf(_onStateChange);
+    // P0-2：每次 state 变化自动落盘。Riverpod 3.x 移除了 ref.listenSelf，改为
+    // 覆盖下方的 `set state` —— 所有 setter 走 `state = ...` 即自动持久化。
+    // 首启基线由本 build 末尾的 persist(merged) 固化。
 
     // 读通路:登录态变化时同步后端收藏。
     //   游客→登录:拉 /me/favorites 回填收藏心(退出重登收藏还在)。
@@ -63,8 +62,11 @@ class AppStateNotifier extends Notifier<AppStateData> {
     return merged;
   }
 
-  void _onStateChange(AppStateData? prev, AppStateData next) {
-    ref.read(localStoreProvider).persist(next);
+  // P0-2：覆盖 state setter，每次赋值后落盘（替代 Riverpod 3.x 已移除的 listenSelf）。
+  @override
+  set state(AppStateData value) {
+    super.state = value;
+    ref.read(localStoreProvider).persist(value);
   }
 
   /// 登录后拉后端收藏,并入 savedProjectIds(mock 演示收藏一并保留)。失败静默。

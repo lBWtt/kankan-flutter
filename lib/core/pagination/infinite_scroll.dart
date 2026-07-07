@@ -1,7 +1,7 @@
 // 这个文件是干什么的：无限滚动辅助——监听 ScrollController，接近底部时触发加载更多。
 // 它对应产品里的什么功能：feed 类页面下拉到底自动加载下一页。
 // 如果它出错了：加载过早（频繁触发）/ 过晚（用户看到底了还没加载）。
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 /// 无限滚动辅助。
 ///
@@ -53,9 +53,7 @@ class LoadMoreIndicator extends StatelessWidget {
         child: SizedBox(
           width: 20,
           height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-          ),
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
     );

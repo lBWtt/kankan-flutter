@@ -41,7 +41,7 @@ class KankanApp extends ConsumerWidget {
     return MaterialApp.router(
       // P2-i18n:app 文案当前由 KkStrings 手写(appTitle 等不直接走此处)。
       // MaterialApp.title 是任务切换器/系统标题栏显示的 app 名,这里用 zh 文案。
-      title: KkStrings.zh.appTitle,
+      title: const KkStrings.zh().appTitle,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       routerConfig: router,

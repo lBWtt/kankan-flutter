@@ -9,6 +9,7 @@ import 'package:kankan_flutter/data/seed/mock_seed.dart';
 import 'package:kankan_flutter/domain/models/models.dart';
 import 'package:kankan_flutter/domain/repositories/post_repository.dart';
 import 'package:kankan_flutter/domain/repositories/project_repository.dart';
+import 'package:kankan_flutter/domain/repositories/search_repository.dart';
 
 Project _probeProject(String id) => Project(
       id: id,

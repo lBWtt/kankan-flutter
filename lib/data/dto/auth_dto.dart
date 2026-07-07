@@ -22,7 +22,8 @@ class LoginResult {
 ///   nickname 缺失时依次退到 邮箱本地部分 / 手机号尾号 / id。
 ///   avatar_url → avatar；bio 直传；关注/粉丝列表登录返回里没有，留空（详情端点再补）。
 KkUser userFromMeJson(Map<String, dynamic> j) {
-  final id = j['id'].toString();
+  // 兜底:user 缺失时 j 为空 map，j['id'] 为 null——不能直接 .toString()（会得到字面 "null"）。
+  final id = (j['id'] ?? '').toString();
   final nickname = (j['nickname'] as String?)?.trim();
   final email = j['email'] as String?;
   final phone = j['phone'] as String?;

@@ -44,7 +44,9 @@ void main() {
         child: const KankanApp(),
       ),
     );
-    await tester.pump();
+    // DiscoverScreen.initState 起了 300ms 假加载 timer——用 pumpAndSettle 等其落定，
+    // 否则测试结束时有 pending timer 触发断言失败。
+    await tester.pumpAndSettle();
     expect(find.byType(MaterialApp), findsOneWidget);
   });
 
@@ -66,8 +68,9 @@ void main() {
     // MaterialApp 挂载成功。
     expect(find.byType(MaterialApp), findsOneWidget);
 
-    // 底栏 4 个 Tab 文案都在。
-    expect(find.text('发现'), findsOneWidget);
+    // 底栏 4 个 Tab 文案都在。「发现」合法出现 2 次(底栏标签 + DiscoverScreen 的 H1
+    // 标题,当前屏 onstage),故用 findsWidgets;其余 Tab 屏未构建/offstage,仅底栏一处。
+    expect(find.text('发现'), findsWidgets);
     expect(find.text('看看'), findsOneWidget);
     expect(find.text('收藏'), findsOneWidget);
     expect(find.text('我的'), findsOneWidget);

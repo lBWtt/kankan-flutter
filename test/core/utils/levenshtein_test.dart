@@ -150,7 +150,7 @@ void main() {
       });
 
       test('候选词为空白串被跳过,若无其它可命中 → null', () {
-        expect(suggestClosest('flutter', ['   ', '   '), isNull);
+        expect(suggestClosest('flutter', ['   ', '   ']), isNull);
       });
     });
 

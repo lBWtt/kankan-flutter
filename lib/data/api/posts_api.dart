@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
 import '../../core/network/app_exception.dart';
 import '../../core/network/dio_provider.dart';
-import '../../core/pagination/page.dart';
 import '../../domain/models/models.dart';
 import '../remote_user_cache.dart';
 

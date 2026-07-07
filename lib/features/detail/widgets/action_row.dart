@@ -68,7 +68,7 @@ class ActionRow extends StatelessWidget {
           source: source,
           takeKind: takeKind,
           label: label,
-          onSuccess: () => onTakeSuccess?.call(a as TakeAction),
+          onSuccess: () => onTakeSuccess?.call(a),
         ),
       GoAction(:final url, :final label) => _GoButton(url: url, label: label),
       HowAction(:final ref, :final label) =>

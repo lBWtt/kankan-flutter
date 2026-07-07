@@ -3,8 +3,6 @@
 // 这个文件是干什么的：移动端真后台下载文件到临时目录，返回路径。
 // 它对应产品里的什么功能：take「下载」动作真落盘（不再用 url_launcher 兜底）。
 // 如果它出错了：返回 null，调用方 toast 失败。
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 

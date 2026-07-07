@@ -39,9 +39,6 @@ class KkStrings {
   /// 英文 stub(预留接口,当前不暴露)。
   const KkStrings.en() : _v = _enValues;
 
-  /// 内部:按 key 取字符串。
-  const KkStrings._(this._v);
-
   final Map<String, String> _v;
 
   // ── App 标题 ──
