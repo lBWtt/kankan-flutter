@@ -11,7 +11,6 @@ import '../../core/widgets/skeletons.dart';
 import '../../core/widgets/kk_back_button.dart';
 import '../../core/widgets/tappable.dart';
 import '../../data/api/users_api.dart';
-import '../../domain/models/models.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/paginated_follows_provider.dart';
 import '../../providers/project_provider.dart';

@@ -8,9 +8,8 @@ import '../core/pagination/paginated_notifier.dart';
 import '../core/pagination/page.dart';
 import '../core/utils/backend_id.dart';
 import '../data/api/comments_api.dart';
+import '../data/seed/mock_seed.dart' as seed;
 import '../domain/models/models.dart';
-import '../domain/repositories/post_repository.dart';
-import '../domain/repositories/project_repository.dart';
 import 'app_state_provider.dart';
 
 /// 把 (hostType, hostId) 复合参数序列化成 family key。
@@ -62,11 +61,9 @@ class PaginatedCommentsNotifier extends PaginatedNotifier<Comment> {
     final hostType = parts.hostType;
     final hostId = parts.hostId;
     if (!AppConfig.useRemote || !looksLikeBackendId(hostId)) {
-      // mock：一次性全量，hasMore=false。同源 commentsFor（与 detail_screen /
-      // post_detail_screen 原 mock 分支一致，都读 mockComments 按 hostId 过滤）。
-      final comments = hostType == 'project'
-          ? ref.read(projectRepositoryProvider).commentsFor(hostId)
-          : ref.read(postRepositoryProvider).commentsFor(hostId);
+      // mock：一次性全量，hasMore=false。用 mock_seed 顶层 commentsFor（唯一真源，
+      // 按 hostId 过滤 mockComments；ProjectRepository 无 commentsFor 方法，见其类注释）。
+      final comments = seed.commentsFor(hostId);
       return Page.last(comments);
     }
     final res = await ref.read(commentsApiProvider).list(
