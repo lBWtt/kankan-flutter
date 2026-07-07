@@ -63,6 +63,11 @@ dependencies:
   # share_plus 10.x 兼容 Flutter >=3.10。Share.share(文本) / Share.shareXFiles(文件)。
   share_plus: ^10.1.0
 
+  # ── Phase 5:真存相册(gal)── 分享海报 PNG 字节直接存系统相册。
+  # gal 2.x maintained, 比 gallery_saver(unmaintained) 轻, 比 saver_gallery 更稳。
+  # Gal.putImageBytes(bytes, name:) → 请求权限 + 存相册; 失败抛 GalException。
+  gal: ^2.3.0
+
   # ── Phase 5:真语法高亮(flutter_highlight)── HowAction 工作流代码块按语言着色。
   # flutter_highlight 0.7.x 依赖 highlight(pure Dart tokenizer)，兼容 Flutter >=1.17。
   # HighlightView(code, language, theme) 即用；主题 atom-one-dark 与项目暗代码区协调。
