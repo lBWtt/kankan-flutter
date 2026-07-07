@@ -81,9 +81,21 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # ── 字体 ──
-  # 放入 assets/fonts/ 对应文件后取消下方注释(详见 assets/fonts/README.md)。
-  # 未取消注释时,app 仍可启动:标题字回退到系统衬线,中文正常显示。
+  # ── 字体(P2 接口留好,资源待投)──
+  # P2-FONTS: 本仓库默认 *不* 携带 .ttf 资源(避免二进制大文件入库 + 沙箱
+  # 无法下载)。`lib/core/fonts/font_family.dart` 已定义 KkFonts.title /
+  # KkFonts.mono + fontFamilyFallback 回退链,即使本段注释掉,app 也能跑:
+  # Flutter 找不到声明的 family,按回退链匹配系统已安装的同名字体
+  # (Noto Serif SC / Source Han Serif SC / Songti SC / serif),视觉接近品牌、
+  # 不崩。这是有意降级,不是 bug。
+  #
+  # 要切到自托管子集:
+  #   1. 按 assets/fonts/README.md 生成两个文件:
+  #        - assets/fonts/NotoSerifSC-Subset.ttf  (Noto Serif SC 子集,~1.5–3MB)
+  #        - assets/fonts/JetBrainsMono-Regular.ttf  (JetBrains Mono Regular,~200KB)
+  #   2. 取消下方 `fonts:` 段注释。
+  #   3. `flutter pub get && flutter run`。
+  # 字体资源 *必须* 先放好再取消注释,否则 `flutter pub get` 会因缺文件报错。
   #
   # fonts:
   #   - family: NotoSerifSC
