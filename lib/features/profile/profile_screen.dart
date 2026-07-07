@@ -507,13 +507,19 @@ class _SavedTab extends ConsumerWidget {
     final appState = ref.watch(appStateProvider);
 
     // 他人收藏对外不可见(后端无「查他人 favorites」端点,隐私)——远程他人一律空态。
-    // 只有自己能看自己的收藏:从 appState.savedProjectIds ∩ 本地 repo。
-    //   (远程 UUID 收藏的项目卡不在 mock repo,那部分在此 Tab 仍显示不全——
-    //    见 me/library 已知缺口,需 /me/favorites 返回卡片后补;此处不 mock 伪造。)
+    // 自己的收藏 = 后端 UUID 收藏完整卡片(remoteFavoritesProvider) + mock 短 id 演示收藏。
     final isRemoteOther =
         !isMe && AppConfig.useRemote && looksLikeBackendId(userId);
+    // 远程收藏卡按 savedProjectIds 过滤(乐观取消收藏即时隐藏,同 library 屏)。
+    final remoteFavs = isMe
+        ? (ref.watch(remoteFavoritesProvider).value ?? const <Project>[])
+            .where((p) => appState.savedProjectIds.contains(p.id))
+        : const <Project>[];
     final saved = isMe
-        ? repo.all().where((p) => appState.savedProjectIds.contains(p.id)).toList()
+        ? <Project>[
+            ...remoteFavs,
+            ...repo.all().where((p) => appState.savedProjectIds.contains(p.id)),
+          ]
         : isRemoteOther
             ? const <Project>[]
             : repo.byAuthor(userId).take(2).toList();

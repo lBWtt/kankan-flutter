@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/app_exception.dart';
 import '../../core/network/dio_provider.dart';
+import '../../domain/models/models.dart';
+import '../dto/project_card_dto.dart';
 
 class InteractionsApi {
   final Dio _dio;
@@ -106,6 +108,24 @@ class InteractionsApi {
           .whereType<Map<dynamic, dynamic>>()
           .map((m) => m['id']?.toString())
           .whereType<String>()
+          .toList();
+    } on DioException catch (e) {
+      throw AppException.fromDio(e);
+    }
+  }
+
+  /// GET /me/favorites → 我收藏过的项目「完整卡片」（含 author+counts，后端已批量填充）。
+  /// 用于收藏屏真实展示 UUID 收藏（listFavoriteIds 只够点亮心，卡片本身用这个）。
+  Future<List<Project>> listFavorites() async {
+    try {
+      final resp = await _dio.get<dynamic>('/me/favorites');
+      final data = resp.data;
+      final rawItems =
+          data is Map ? (data['items'] ?? const <dynamic>[]) : (data ?? const <dynamic>[]);
+      final items = rawItems is List ? rawItems : const <dynamic>[];
+      return items
+          .whereType<Map<dynamic, dynamic>>()
+          .map((m) => projectFromCardJson(Map<String, dynamic>.from(m)))
           .toList();
     } on DioException catch (e) {
       throw AppException.fromDio(e);

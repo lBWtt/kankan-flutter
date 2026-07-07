@@ -10,6 +10,7 @@ import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../providers/app_state_provider.dart';
+import '../../providers/remote_project_provider.dart';
 import '../../router/routes.dart';
 import '../shared/empty_state.dart';
 import '../shared/project_card.dart';
@@ -64,7 +65,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     // tab 计数取 effective.length,杜绝"收藏 0 但列出多条"矛盾
     // (HANDOFF §6.10 真实计数 + 列表同源)。
     final savedIds = appState.savedProjectIds;
-    final realSaved = repo.all().where((p) => savedIds.contains(p.id)).toList()
+    // 真实收藏 = 后端来的 UUID 收藏完整卡片(remoteFavoritesProvider,含 author+counts)
+    //   + mock repo 里命中的短 id 演示收藏。两者不重叠(UUID 不在 mock repo)。
+    // 按 savedIds 过滤远程收藏卡:乐观取消收藏(从 savedIds 移除)即时隐藏,
+    // 无需等 provider 重拉(indexedStack 下收藏屏常驻、autoDispose 不会及时释放)。
+    final remoteFavs = (ref.watch(remoteFavoritesProvider).value ?? const <Project>[])
+        .where((p) => savedIds.contains(p.id));
+    final mockFavs = repo.all().where((p) => savedIds.contains(p.id));
+    final realSaved = <Project>[...remoteFavs, ...mockFavs]
       ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
     final effective = realSaved.isEmpty
         ? <Project>[
