@@ -16,6 +16,7 @@ import '../../providers/remote_project_provider.dart';
 import '../../router/routes.dart';
 import '../shared/empty_state.dart';
 import '../shared/project_card.dart';
+import '../shared/remote_error.dart';
 
 /// 看看屏 — HANDOFF §6.9 项目 feed。
 ///
@@ -287,8 +288,11 @@ class _ProjectList extends ConsumerWidget {
     final async = ref.watch(remoteProjectsProvider);
     return async.when(
       loading: () => _skeleton(),
-      error: (e, _) => _RemoteError(
-        onRetry: () => ref.invalidate(remoteProjectsProvider),
+      error: (e, _) => RemoteError(
+        message: '连不上服务器',
+        onRetry: () async {
+          ref.invalidate(remoteProjectsProvider);
+        },
       ),
       data: (all) {
         // 后端不透传前端 domain/hot 排序,这里客户端兜底(见 DTO 分叉注释)。
@@ -341,48 +345,6 @@ class _ProjectList extends ConsumerWidget {
       itemCount: 3,
       separatorBuilder: (_, __) => const SizedBox(height: KkSpacing.lg),
       itemBuilder: (_, __) => const ProjectCardSkeleton(),
-    );
-  }
-}
-
-// 真数据加载失败:一句事实 + 重试(零旁白,不写"哎呀出错了")。
-class _RemoteError extends StatelessWidget {
-  final VoidCallback onRetry;
-  const _RemoteError({required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SizedBox(height: 120),
-        Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('连不上服务器',
-                  style: KkType.body.copyWith(color: KkColors.t2)),
-              const SizedBox(height: KkSpacing.md),
-              Tappable(
-                onTap: onRetry,
-                borderRadius: BorderRadius.circular(KkRadius.pill),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: KkSpacing.lg,
-                    vertical: KkSpacing.sm,
-                  ),
-                  decoration: BoxDecoration(
-                    color: KkColors.bgSubtle,
-                    borderRadius: BorderRadius.circular(KkRadius.pill),
-                    border: Border.all(color: KkColors.bd),
-                  ),
-                  child: Text('重试',
-                      style: KkType.bodySm.copyWith(color: KkColors.teal)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

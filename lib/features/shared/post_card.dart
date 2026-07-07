@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -16,6 +17,7 @@ import '../../providers/project_provider.dart';
 import '../../router/routes.dart';
 import 'avatar.dart';
 import 'image_lightbox.dart';
+import 'report_sheet.dart';
 
 /// HANDOFF §1 动态卡(轻)— 发现页 feed 用。
 ///
@@ -172,16 +174,121 @@ class PostCard extends ConsumerWidget {
       ),
     );
 
-    // 整卡点击(内部热区优先,手势竞技场自然分离)
-    if (onTap != null) {
-      return Tappable(
-        onTap: onTap,
-        borderRadius: BorderRadius.zero,
-        child: card,
-      );
-    }
-    return card;
+    // 整卡点击 + 长按快捷菜单(内部热区优先,手势竞技场自然分离)。
+    // D4:长按弹快捷菜单(不感兴趣 / 复制链接 / 举报),复用 _sheetItem 风格。
+    return Tappable(
+      onTap: onTap,
+      onLongPress: () => _showQuickMenu(context, ref),
+      borderRadius: BorderRadius.zero,
+      child: card,
+    );
   }
+
+  // ── D4:长按动态卡快捷菜单 ──
+  // 不感兴趣 → markNotInterested + toast「已减少类似推荐」(feed 重建过滤该动态);
+  // 复制链接 → Clipboard + toast「链接已复制」(分享 URL 同 post_detail share_sheet);
+  // 举报 → 复用 showReportSheet(prompt 说占位 toast,但 report_sheet 已是真举报,
+  //   post_detail/profile/comment 多处复用;为一致性调真 sheet,不在长按菜单新写网络)。
+  // sheetCtx 只用于关 quick menu;showReportSheet 用外层 context(pop 后 sheetCtx 失效)。
+  void _showQuickMenu(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: KkColors.bgCard,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _sheetItem(
+              icon: Icons.visibility_off_outlined,
+              label: '不感兴趣',
+              onTap: () {
+                final messenger = ScaffoldMessenger.maybeOf(sheetCtx);
+                Navigator.pop(sheetCtx);
+                ref
+                    .read(appStateProvider.notifier)
+                    .markNotInterested(post.id);
+                messenger?.showSnackBar(
+                  const SnackBar(
+                    content: Text('已减少类似推荐'),
+                    duration: Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+            const Divider(height: 1, color: KkColors.divider),
+            _sheetItem(
+              icon: Icons.link_outlined,
+              label: '复制链接',
+              onTap: () async {
+                final messenger = ScaffoldMessenger.maybeOf(sheetCtx);
+                Navigator.pop(sheetCtx);
+                await Clipboard.setData(
+                  ClipboardData(text: 'https://kankan.app/post/${post.id}'),
+                );
+                messenger?.showSnackBar(
+                  const SnackBar(
+                    content: Text('链接已复制'),
+                    duration: Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+            const Divider(height: 1, color: KkColors.divider),
+            _sheetItem(
+              icon: Icons.flag_outlined,
+              label: '举报',
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                showReportSheet(
+                  context,
+                  targetType: 'post',
+                  targetId: post.id,
+                );
+              },
+            ),
+            const Divider(height: 1, color: KkColors.divider),
+            _sheetItem(
+              icon: Icons.close,
+              label: '取消',
+              onTap: () => Navigator.pop(sheetCtx),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── D4:长按菜单 item(复用 post_detail _sheetItem 风格,不提取公共组件避免改动面)──
+Widget _sheetItem({
+  required IconData icon,
+  required String label,
+  Color? color,
+  VoidCallback? onTap,
+}) {
+  return Tappable(
+    onTap: onTap,
+    borderRadius: BorderRadius.zero,
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: KkSpacing.md,
+        vertical: KkSpacing.md,
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color ?? KkColors.t2),
+          const SizedBox(width: KkSpacing.md),
+          Text(
+            label,
+            style: KkType.body.copyWith(color: color ?? KkColors.t1),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ── 任务⑮A:配图网格(按张数布局,小红书/朋友圈式)──

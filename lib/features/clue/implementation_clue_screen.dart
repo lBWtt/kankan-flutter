@@ -13,6 +13,7 @@ import '../../providers/analytics_provider.dart';
 import '../../providers/clue_provider.dart';
 import '../shared/empty_state.dart';
 import '../shared/project_card.dart';
+import '../shared/remote_error.dart';
 
 /// 实现线索页 — ZAI_PLAYBOOK P0 主信号下游落地页。
 ///
@@ -111,7 +112,12 @@ class _ImplementationClueScreenState
               Expanded(
                 child: clueAsync.when(
                   loading: _clueSkeleton,
-                  error: (e, _) => _errorView(e),
+                  error: (e, _) => RemoteError(
+                    message: '线索加载失败',
+                    onRetry: () async {
+                      ref.invalidate(clueProvider(widget.projectId));
+                    },
+                  ),
                   data: (clue) => _body(clue, count, marked, subscribed),
                 ),
               ),
@@ -594,49 +600,6 @@ class _ImplementationClueScreenState
           ),
         ),
       ],
-    );
-  }
-
-  // ── error 态:一句话 + 重试 ──
-  Widget _errorView(Object e) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: KkSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_outlined, size: 40, color: KkColors.t4),
-            const SizedBox(height: KkSpacing.md),
-            Text('线索加载失败',
-                style: KkType.body.copyWith(color: KkColors.t3)),
-            const SizedBox(height: KkSpacing.lg),
-            Tappable(
-              onTap: () => ref.invalidate(clueProvider(widget.projectId)),
-              borderRadius: BorderRadius.circular(KkRadius.pill),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: KkSpacing.xl,
-                  vertical: KkSpacing.sm + 2,
-                ),
-                decoration: BoxDecoration(
-                  color: KkColors.mint,
-                  borderRadius: BorderRadius.circular(KkRadius.pill),
-                  border: Border.all(color: KkColors.teal.withOpacity(0.3)),
-                ),
-                child: Text(
-                  '重试',
-                  style: TextStyle(
-                    color: KkColors.teal,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    fontFamily: 'NotoSerifSC',
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

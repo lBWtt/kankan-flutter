@@ -5,11 +5,13 @@ import '../../core/theme/tokens.dart';
 
 /// 空状态组件 — HANDOFF §5:无 emoji,用图标 + 文案。
 ///
-/// 4 变体:
-///   - generic  通用("暂无内容")
-///   - feed     流空("还没有动态"/"关注的人还没发")
-///   - saved    收藏空("还没收藏")
-///   - takeaway 拿走空("还没存过素材")
+/// 6 变体(B3 补 followers/search):
+///   - generic   通用("暂无内容")
+///   - feed      流空("还没有动态"/"关注的人发的动态在这里")
+///   - saved     收藏空("还没收藏"/"收藏的项目在这里")
+///   - takeaway  拿走空("还没存过素材"/"存下的素材在这里找回")
+///   - followers 关注空("还没关注"/"关注的人在这里")
+///   - search    搜索空("没有结果"/"换个词试试")
 ///
 /// 零旁白(HANDOFF §3):只陈述事实,不写"快去发现更多吧"之类引导。
 class EmptyState extends StatelessWidget {
@@ -85,11 +87,23 @@ class EmptyState extends StatelessWidget {
           title: '还没存过素材',
           subtitle: '存下的素材在这里找回',
         );
+      case EmptyStateVariant.followers:
+        return const _EmptyMeta(
+          icon: Icons.people_outline,
+          title: '还没关注',
+          subtitle: '关注的人在这里',
+        );
+      case EmptyStateVariant.search:
+        return const _EmptyMeta(
+          icon: Icons.search_off,
+          title: '没有结果',
+          subtitle: '换个词试试',
+        );
     }
   }
 }
 
-enum EmptyStateVariant { generic, feed, saved, takeaway }
+enum EmptyStateVariant { generic, feed, saved, takeaway, followers, search }
 
 class _EmptyMeta {
   final IconData icon;

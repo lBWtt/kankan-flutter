@@ -22,6 +22,7 @@ import '../shared/avatar.dart';
 import '../shared/empty_state.dart';
 import '../shared/post_card.dart';
 import '../shared/project_card.dart';
+import '../shared/remote_error.dart';
 
 /// 榜单屏 — Phase 3 Tier 3。
 ///
@@ -328,8 +329,11 @@ class _ProjectRankingList extends ConsumerWidget {
       final async = ref.watch(remoteWeeklyHotProvider);
       return async.when(
         loading: () => const _RankingLoading(),
-        error: (e, _) => _RankingError(
-          onRetry: () => ref.invalidate(remoteWeeklyHotProvider),
+        error: (e, _) => RemoteError(
+          message: '榜单加载失败',
+          onRetry: () async {
+            ref.invalidate(remoteWeeklyHotProvider);
+          },
         ),
         data: (list) => _list(context, list, remote: true),
       );
@@ -376,41 +380,6 @@ class _RankingLoading extends StatelessWidget {
             strokeWidth: 2,
             valueColor: AlwaysStoppedAnimation(KkColors.teal),
           ),
-        ),
-      );
-}
-
-class _RankingError extends StatelessWidget {
-  final VoidCallback onRetry;
-  const _RankingError({required this.onRetry});
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_outlined, size: 40, color: KkColors.t3),
-            const SizedBox(height: KkSpacing.md),
-            Text('榜单加载失败',
-                style: KkType.bodySm.copyWith(color: KkColors.t3)),
-            const SizedBox(height: KkSpacing.md),
-            Tappable(
-              onTap: onRetry,
-              borderRadius: BorderRadius.circular(KkRadius.pill),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: KkSpacing.lg, vertical: KkSpacing.sm),
-                decoration: BoxDecoration(
-                  color: KkColors.teal,
-                  borderRadius: BorderRadius.circular(KkRadius.pill),
-                ),
-                child: const Text('重试',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ],
         ),
       );
 }

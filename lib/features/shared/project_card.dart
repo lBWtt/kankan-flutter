@@ -220,8 +220,12 @@ class ProjectCard extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            // 小封面
-            _Cover(project: project, width: 56, height: 56),
+            // 小封面(B2:Hero 配对详情页 'project-cover-{id}',紧凑卡飞入详情。
+            // library/ranking 各自单屏项目唯一,不同屏不冲突,discover 用 _full 不混用)
+            Hero(
+              tag: 'project-cover-${project.id}',
+              child: _Cover(project: project, width: 56, height: 56),
+            ),
             const SizedBox(width: KkSpacing.md),
             Expanded(
               child: Column(
