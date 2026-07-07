@@ -100,7 +100,7 @@ search_results 屏补齐 19 屏最后一块拼图(修复 Web 版 hashtag 跳空 
   所有验证靠静态 grep + 人工读审 + 试金石检查。
   用户拿到本包后需自行跑 `flutter pub get && dart run build_runner build -d && flutter analyze` 验证。
 - **comment_actions_sheet 未接入 comments_screen**:`CommentThread` 组件无 `onCommentLongPress` 钩子,强行改会破坏 4 处调用。组件已就位,Phase 4 加钩子后接入。
-- **share_plus / gallery_saver 未引入**:Phase 5 真分享时再上。
+- **share_plus / gal 未引入**:Phase 5 真分享时再上。(注:PR #26 已接 share_plus 真分享,PR 11-C 已接 gal 真存相册,本行为历史快照)
 - **freezed codegen 未跑**:`.freezed.dart` 文件未生成,用户跑 `dart run build_runner build -d` 后可用。
 
 ### 下一步(Phase 4 / Phase 5)
@@ -110,7 +110,7 @@ search_results 屏补齐 19 屏最后一块拼图(修复 Web 版 hashtag 跳空 
 - Phase 4 Golden 测试(每屏截图回归)
 - Phase 5 真持久化(替换内存 repository)。注:Drift 已弃用(F-34 analyzer 冲突),
   Phase 5 优先用 shared_preferences / isar / sqflite 任一不与 freezed analyzer 冲突的方案。
-- Phase 5 share_plus / gallery_saver 真分享 + 真保存相册
+- Phase 5 share_plus 真分享 + gal 真存相册(已由 PR #26 / 11-C 落地)
 - Phase 5 CachedNetworkImage 替换 project_card 封面占位
 
 ---

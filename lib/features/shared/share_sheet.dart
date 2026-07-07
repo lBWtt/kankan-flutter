@@ -17,7 +17,7 @@ import '../../core/widgets/tappable.dart';
 /// 分享浮层 — 生成可截图海报 + 渲染分享渠道。
 ///
 /// HANDOFF §6.7 真路由:shareUrl 用真实 deep link,复制链接走 Clipboard。
-/// Phase 5 接 share_plus / gallery_saver 做真分享 + 真保存到相册。
+/// Phase 5 已接 share_plus 真分享 + gal 真存相册。
 ///
 /// 海报:RepaintBoundary 包裹(可 toImage 截图),内部 5 种 Canvas 图案之一
 /// 作为顶部 40% 背景 + 文字内容 + 二维码占位。
@@ -116,7 +116,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   bool get _hasCover =>
       widget.coverImageUrl != null && widget.coverImageUrl!.isNotEmpty;
 
-  /// 海报 RepaintBoundary key(用于 toImage 截图,Phase 5 接 gallery_saver)
+  /// 海报 RepaintBoundary key(用于 toImage 截图,Phase 5 接 gal 真存相册)
   final GlobalKey _boundaryKey = GlobalKey();
 
   @override
@@ -164,10 +164,10 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     );
   }
 
-  // ── 任务 B:「保存图片」做真(web)— RepaintBoundary.toImage → PNG → 浏览器下载 ──
+  // ── 「保存图片」:RepaintBoundary.toImage → PNG → 落盘 ──
   // 海报已用 _boundaryKey 包裹,toImage(pixelRatio: 3) 拿高分辨率截图,
   // toByteData(png) 拿字节,downloadPngBytes 走条件导入(web:dart:html
-  // AnchorElement+Blob;移动端 stub 返回 false)。成功 toast「已保存」。
+  // AnchorElement+Blob 浏览器下载;移动端 gal 真存相册)。成功 toast「已保存到相册」。
   // 注:messenger 在 await 前捕获,避免 use_build_context_synchronously。
   Future<void> _saveImage() async {
     final messenger = ScaffoldMessenger.maybeOf(context);
@@ -200,7 +200,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
         bytes,
         'kankan-${widget.shareType}-${DateTime.now().millisecondsSinceEpoch}.png',
       );
-      snack(ok ? '已保存' : '保存失败(仅支持 Web)');
+      snack(ok ? '已保存到相册' : '保存失败');
     } catch (_) {
       snack('保存失败');
     }
