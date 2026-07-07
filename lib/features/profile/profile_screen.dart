@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/utils/backend_id.dart';
 import '../../core/widgets/tappable.dart';
+import '../../data/api/users_api.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
@@ -68,8 +71,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
     final projects = projectRepo.byAuthor(widget.userId);
     final posts = postRepo.byAuthor(widget.userId);
-    final following = (user?.followingIds ?? const <String>[]).length;
-    final followers = (user?.followerIds ?? const <String>[]).length;
+    // 远程用户(UUID + useRemote)→ 读 GET /users/{id} 真计数 + 真昵称/头像/简介。
+    // mock 用户(短 id 'chen')保持 mock 派生。loading/error 退化 mock 占位(无闪烁)。
+    final isRemoteUser =
+        AppConfig.useRemote && looksLikeBackendId(widget.userId);
+    int following = (user?.followingIds ?? const <String>[]).length;
+    int followers = (user?.followerIds ?? const <String>[]).length;
+    KkUser? displayUser = user;
+    if (isRemoteUser) {
+      final pub = ref.watch(remoteUserPublicProvider(widget.userId)).valueOrNull;
+      if (pub != null) {
+        following = pub.followingCount;
+        followers = pub.followerCount;
+        // 用真资料覆盖(mock 没有这位远程用户的 name/avatar/bio)。
+        displayUser = KkUser(
+          id: pub.id,
+          name: pub.nickname.isNotEmpty ? pub.nickname : widget.userId,
+          avatar: pub.avatarUrl,
+          bio: pub.bio,
+        );
+      }
+    }
     final totalLikes =
         projects.fold<int>(0, (s, p) => s + p.likes) +
             posts.fold<int>(0, (s, p) => s + p.likes);
@@ -84,7 +106,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           // 头部:ProfileHeader(banner + 大头像 + 名字 + banner 右上槽 +
           // inline 统计行 关注/粉丝/获赞 + 右侧关注/编辑按钮)
           ProfileHeader(
-            user: user,
+            user: displayUser,
             userId: widget.userId,
             followingCount: following,
             followerCount: followers,
