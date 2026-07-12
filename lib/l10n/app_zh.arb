@@ -40,28 +40,315 @@
   "@confirm": { "description": "确认对话框主按钮。" },
   "retry": "重试",
   "@retry": { "description": "错误态重试按钮(RemoteError)。" },
+  "edit": "编辑",
+  "@edit": { "description": "编辑动作(资料、评论 own 等)。" },
+  "copy": "复制",
+  "@copy": { "description": "复制动作(代码块、文本 take 等)。" },
+  "done": "完成",
+  "@done": { "description": "完成动作(对话框、输入完成等)。" },
+  "refresh": "刷新",
+  "@refresh": { "description": "刷新动作(下拉刷新提示、推荐条「换一批」图标 alt)。" },
+  "back": "返回",
+  "@back": { "description": "返回动作(返回按钮 semanticLabel、post_detail 返回按钮文字)。" },
+  "more": "更多",
+  "@more": { "description": "更多动作(顶栏 more_horiz 图标 semanticLabel)。" },
+  "report": "举报",
+  "@report": { "description": "举报动作(more sheet 举报项)。" },
+  "block": "拉黑",
+  "@block": { "description": "拉黑作者动作(profile more sheet)。" },
+  "loadMore": "加载更多",
+  "@loadMore": { "description": "加载更多文案(无限滚动底部指示器)。" },
+  "remove": "移除",
+  "@remove": { "description": "移除动作(chip × 关闭按钮 semanticLabel)。" },
+  "clearAll": "清空",
+  "@clearAll": { "description": "清空动作(历史/缓存的 section action)。" },
 
   "ranking": "榜单",
   "@ranking": { "description": "看看页顶栏榜单图标 semanticLabel。" },
 
-  "emptyFeed": "这里还没有内容",
-  "@emptyFeed": { "description": "feed 空状态(发现/看看)。" },
-  "emptyGeneric": "什么都没找到",
-  "@emptyGeneric": { "description": "通用空状态(EmptyState generic variant)。" },
-  "emptySearch": "搜不到相关内容",
+  "loading": "加载中",
+  "@loading": { "description": "加载中文案。" },
+  "empty": "空",
+  "@empty": { "description": "空通用文案(极短)。" },
+  "error": "出错了",
+  "@error": { "description": "通用错误文案(极短)。" },
+  "offline": "离线",
+  "@offline": { "description": "离线状态文案。" },
+  "success": "成功",
+  "@success": { "description": "操作成功 snackbar 兜底。" },
+  "failed": "失败",
+  "@failed": { "description": "操作失败 snackbar 兜底。" },
+  "networkError": "网络异常",
+  "@networkError": { "description": "网络异常 snackbar/错误态文案。" },
+
+  "emptyFeed": "还没有动态",
+  "@emptyFeed": { "description": "feed 空状态(发现页推荐/关注流)。" },
+  "emptyGeneric": "暂无内容",
+  "@emptyGeneric": { "description": "通用空状态(EmptyState generic variant,看看无项目/topic 空等)。" },
+  "emptySearch": "没有结果",
   "@emptySearch": { "description": "搜索结果空状态。" },
+  "emptySaved": "还没收藏",
+  "@emptySaved": { "description": "收藏空状态(EmptyState saved variant 标题)。" },
+  "emptyTakeaway": "还没存过素材",
+  "@emptyTakeaway": { "description": "拿走物空状态(EmptyState takeaway variant 标题)。" },
+  "emptyFollowers": "还没关注",
+  "@emptyFollowers": { "description": "关注列表空状态(EmptyState followers variant 标题)。" },
 
   "loadFailed": "加载失败",
   "@loadFailed": { "description": "加载失败兜底文案。" },
   "connectFailed": "连不上服务器",
   "@connectFailed": { "description": "远程数据加载失败文案(RemoteError message)。" },
+  "errorLoad": "加载失败",
+  "@errorLoad": { "description": "加载失败通用文案(RemoteError 默认 message)。" },
+  "errorNetwork": "连不上服务器",
+  "@errorNetwork": { "description": "网络错误文案(分页 feed 首屏失败)。" },
+  "retryButton": "重试",
+  "@retryButton": { "description": "错误态重试按钮文字(RemoteError 内部按钮)。" },
 
   "projectSemantic": "项目:{title}",
   "@projectSemantic": {
-    "description": "项目卡整体无障碍标签(读屏念「项目:标题」)。占位符 {title} 替换为项目标题。"
+    "description": "项目卡整体无障碍标签(读屏念「项目:标题」)。占位符 {title} 替换为项目标题。",
+    "placeholders": {
+      "title": { "type": "String" }
+    }
   },
   "postSemantic": "动态:{author}",
   "@postSemantic": {
-    "description": "动态卡整体无障碍标签。占位符 {author} 替换为作者名。"
-  }
+    "description": "动态卡整体无障碍标签。占位符 {author} 替换为作者名。",
+    "placeholders": {
+      "author": { "type": "String" }
+    }
+  },
+
+  "postCount": "{n} 动态",
+  "@postCount": {
+    "description": "动态计数文案(profile tab、topic tile 计数行)。占位符 {n} 替换为整数。",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "followerCount": "{n} 粉丝",
+  "@followerCount": {
+    "description": "粉丝计数文案。占位符 {n} 替换为整数。",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "followingCount": "{n} 关注",
+  "@followingCount": {
+    "description": "关注计数文案。占位符 {n} 替换为整数。",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "likeCount": "{n} 赞",
+  "@likeCount": {
+    "description": "点赞计数文案(me/profile/推荐小卡)。占位符 {n} 替换为整数。",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "commentCount": "{n} 评论",
+  "@commentCount": {
+    "description": "评论计数文案。占位符 {n} 替换为整数。",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "viewCount": "{n} 浏览",
+  "@viewCount": {
+    "description": "浏览计数文案。占位符 {n} 替换为整数。",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "takeawayCount": "{n} 拿走",
+  "@takeawayCount": {
+    "description": "拿走计数文案。占位符 {n} 替换为整数。",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "wantHowToCount": "{n} 人想知道",
+  "@wantHowToCount": {
+    "description": "「N 人想知道」计数(详情页 clue 入口)。占位符 {n} 替换为整数。",
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "replyToName": "回复 {name}",
+  "@replyToName": {
+    "description": "「回复 {name}」评论输入框 placeholder。占位符 {name} 替换为被回复者昵称。",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
+  "justNow": "刚刚",
+  "@justNow": { "description": "时间相对文案「刚刚」(time_ago 对齐)。" },
+  "minutesAgo": "{n} 分钟前",
+  "@minutesAgo": {
+    "description": "时间相对文案「N 分钟前」。占位符 {n} 替换为整数。",
+    "placeholders": { "n": {} }
+  },
+  "hoursAgo": "{n} 小时前",
+  "@hoursAgo": {
+    "description": "时间相对文案「N 小时前」。占位符 {n} 替换为整数。",
+    "placeholders": { "n": {} }
+  },
+  "yesterday": "昨天",
+  "@yesterday": { "description": "时间相对文案「昨天」(也用作通知/搜索时间桶标题)。" },
+  "daysAgo": "{n} 天前",
+  "@daysAgo": {
+    "description": "时间相对文案「N 天前」。占位符 {n} 替换为整数。",
+    "placeholders": { "n": {} }
+  },
+  "weeksAgo": "{n} 周前",
+  "@weeksAgo": {
+    "description": "时间相对文案「N 周前」。占位符 {n} 替换为整数。",
+    "placeholders": { "n": {} }
+  },
+  "monthsAgo": "{n} 个月前",
+  "@monthsAgo": {
+    "description": "时间相对文案「N 个月前」。占位符 {n} 替换为整数。",
+    "placeholders": { "n": {} }
+  },
+  "today": "今天",
+  "@today": { "description": "时间桶标题「今天」(通知/搜索)。" },
+  "thisWeek": "本周",
+  "@thisWeek": { "description": "时间桶标题「本周」(通知)。" },
+  "earlier": "更早",
+  "@earlier": { "description": "时间桶标题「更早」(通知/搜索)。" },
+
+  "discoverTitle": "发现",
+  "@discoverTitle": { "description": "发现页顶栏标题。" },
+  "todayTopic": "今日话题",
+  "@todayTopic": { "description": "发现页推荐流顶部「今日话题」横条标题。" },
+  "recommendFeed": "推荐",
+  "@recommendFeed": { "description": "发现页推荐流 Tab 标签。" },
+  "followingFeed": "关注",
+  "@followingFeed": { "description": "发现页关注流 Tab 标签。" },
+  "topicPlaza": "话题广场",
+  "@topicPlaza": { "description": "话题广场入口(发现页 + 话题广场屏标题)。" },
+
+  "kankanTitle": "看看",
+  "@kankanTitle": { "description": "看看页顶栏标题。" },
+  "rankingUpdated": "榜单每小时更新",
+  "@rankingUpdated": { "description": "榜单页更新说明。" },
+  "rankingBasis": "按获赞数排序",
+  "@rankingBasis": { "description": "榜单页排序说明。" },
+  "changeBatch": "换一批",
+  "@changeBatch": { "description": "「换一批」推荐条刷新按钮(看看页 _RecommendStrip)。" },
+  "becauseYouViewed": "因为你看过 ",
+  "@becauseYouViewed": { "description": "「因为你看过 X」推荐条前缀(末尾空格便于拼接项目标题)。" },
+
+  "libraryTitle": "收藏",
+  "@libraryTitle": { "description": "收藏页顶栏标题。" },
+  "savedProjects": "收藏",
+  "@savedProjects": { "description": "收藏页 Tab 1 标签(收藏的项目)。" },
+  "savedTakeaways": "素材",
+  "@savedTakeaways": { "description": "收藏页 Tab 2 标签(我拿走的素材)。" },
+
+  "meTitle": "我的",
+  "@meTitle": { "description": "我的页顶栏标题(目前未显式渲染,banner 上方留白)。" },
+  "myPosts": "我发布的",
+  "@myPosts": { "description": "我的页「我发布的」section 标题。" },
+  "editProfile": "编辑资料",
+  "@editProfile": { "description": "编辑资料按钮/标题(me、profile、profile_edit)。" },
+  "settings": "设置",
+  "@settings": { "description": "设置入口/设置页标题。" },
+  "logout": "退出登录",
+  "@logout": { "description": "退出登录动作(more sheet、settings)。" },
+  "myContribution": "我的贡献",
+  "@myContribution": { "description": "我的页「我的贡献」卡片标题。" },
+  "followedDomains": "我关注的领域",
+  "@followedDomains": { "description": "我的页「我关注的领域」section 标题。" },
+  "followedTopics": "我关注的话题",
+  "@followedTopics": { "description": "我的页「我关注的话题」section 标题。" },
+  "recentlyViewed": "最近看过",
+  "@recentlyViewed": { "description": "我的页「最近看过」section 标题。" },
+  "viewAll": "查看全部",
+  "@viewAll": { "description": "「查看全部」section action(我发布的)。" },
+  "adjust": "调整",
+  "@adjust": { "description": "「+调整」chip 文字(我关注的领域末尾幽灵 chip)。" },
+  "clear": "清空",
+  "@clear": { "description": "「清空」section action(最近看过/通知全部已读外的清空入口)。" },
+  "changeAvatar": "更换头像",
+  "@changeAvatar": { "description": "profile_edit 头像区「更换头像」按钮。" },
+  "loginRegister": "登录 / 注册",
+  "@loginRegister": { "description": "未登录态的「登录 / 注册」入口(me / settings)。" },
+
+  "wantHowTo": "想看怎么做",
+  "@wantHowTo": { "description": "详情页 clue 入口标题文字。" },
+  "deleteThisProject": "删除这个项目?",
+  "@deleteThisProject": { "description": "详情页删除自己项目的二次确认对话框内容。" },
+  "projectNotExist": "项目不存在",
+  "@projectNotExist": { "description": "详情页加载项目为 null 时的兜底文案。" },
+  "postNotExist": "动态不存在或已删除",
+  "@postNotExist": { "description": "动态详情页加载 post 为 null 时的 EmptyState title。" },
+  "commentsLabel": "心得",
+  "@commentsLabel": { "description": "「心得」短文案(详情页底栏「心得 N」前缀,CommentThread header)。" },
+  "takeaway": "拿走",
+  "@takeaway": { "description": "「拿走」短文案(action chip 兜底 label)。" },
+  "howToUse": "怎么用",
+  "@howToUse": { "description": "「怎么用」action chip 兜底 label。" },
+  "codeBlock": "代码块",
+  "@codeBlock": { "description": "「代码块」io block 标题。" },
+  "videoBlock": "视频块",
+  "@videoBlock": { "description": "「视频块」io block 标题。" },
+  "fileDownload": "文件下载",
+  "@fileDownload": { "description": "「文件下载」action chip 兜底 label。" },
+  "flowCompare": "流程对比",
+  "@flowCompare": { "description": "「流程对比」io block 标题。" },
+
+  "composePost": "发动态",
+  "@composePost": { "description": "publish_entry_sheet 发动态入口标题。" },
+  "publishProject": "发作品",
+  "@publishProject": { "description": "publish_entry_sheet 发作品入口标题(原「发作品(项目)」简化)。" },
+  "titlePlaceholder": "标题",
+  "@titlePlaceholder": { "description": "publish 屏标题输入框 placeholder。" },
+  "summaryPlaceholder": "一句话说价值",
+  "@summaryPlaceholder": { "description": "publish 屏一句话价值输入框 placeholder。" },
+  "contentPlaceholder": "这一刻的想法…",
+  "@contentPlaceholder": { "description": "compose 屏正文输入框 placeholder。" },
+  "authorNotePlaceholder": "作者的话",
+  "@authorNotePlaceholder": { "description": "publish 屏作者的话输入框 placeholder。" },
+  "topicPlaceholder": "# 话题(回车加)",
+  "@topicPlaceholder": { "description": "publish 屏标签输入框 placeholder。" },
+  "addMaterial": "加素材",
+  "@addMaterial": { "description": "publish 屏「+ 加素材」按钮。" },
+  "saveAction": "保存",
+  "@saveAction": { "description": "保存动作(profile_edit 顶栏「保存」按钮)。" },
+  "restore": "恢复",
+  "@restore": { "description": "草稿横条「恢复」按钮。" },
+  "ignore": "忽略",
+  "@ignore": { "description": "草稿横条「忽略」按钮。" },
+  "draftRestore": "恢复上次草稿?",
+  "@draftRestore": { "description": "草稿恢复横条主文案。" },
+  "quoteProject": "引用项目",
+  "@quoteProject": { "description": "compose 屏「引用项目」section / sheet 标题。" },
+  "publishHintPost": "文字 + 图 + 话题 + 引用",
+  "@publishHintPost": { "description": "publish_entry_sheet 发动态入口副标题。" },
+  "publishHintProject": "成果 + 素材",
+  "@publishHintProject": { "description": "publish_entry_sheet 发作品入口副标题。" },
+
+  "searchHint": "搜索",
+  "@searchHint": { "description": "搜索框 placeholder。" },
+  "recentSearches": "最近搜索",
+  "@recentSearches": { "description": "搜索页「最近搜索」section 标题。" },
+  "clearHistory": "清空",
+  "@clearHistory": { "description": "搜索页「清空」搜索历史按钮。" },
+  "hotSearch": "热门话题",
+  "@hotSearch": { "description": "搜索页「热门话题」section 标题。" },
+  "noResult": "暂无",
+  "@noResult": { "description": "搜索建议空、热门话题空时的兜底文案。" },
+
+  "writeComment": "写评论…",
+  "@writeComment": { "description": "评论输入框 placeholder。" },
+  "replyTo": "回复",
+  "@replyTo": { "description": "「回复」短文案(评论 action)。" },
+  "commentDeleted": "评论已删除",
+  "@commentDeleted": { "description": "评论被删除后的占位文案。" },
+  "commentEdited": "已编辑",
+  "@commentEdited": { "description": "评论被编辑后的「已编辑」标记。" }
 }

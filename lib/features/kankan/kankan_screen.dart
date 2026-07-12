@@ -47,8 +47,11 @@ class _KankanScreenState extends ConsumerState<KankanScreen>
   /// 现在 mock 数据是同步的,300ms 假延迟让骨架屏有展示机会。
   bool _loading = true;
 
+  // TODO(i18n): 迁移到 KkStrings — '精选' / '热门' / '最新'
   static const _sorts = [('精选', 'featured'), ('热门', 'hot'), ('最新', 'new')];
 
+  // 领域筛选 chip(横向)。注:领域 label 仍硬编码中文,后续 i18n 迁移。
+  // TODO(i18n): 迁移到 KkStrings — '全部' / 'AI图' / 'AI视频' / '网页' / 'App' / '工具' / '开源' / 'Prompt'
   static const _domains = <(String, String?)>[
     ('全部', null),
     ('AI图', 'ai_image'),
@@ -135,7 +138,7 @@ class _KankanScreenState extends ConsumerState<KankanScreen>
       child: Row(
         children: [
           // 任务②:标题后 6×6 teal 品牌点(签名细节)
-          Text('看看', style: KkType.h1),
+          Text(s.kankanTitle, style: KkType.h1),
           const SizedBox(width: 7),
           Container(
             width: 6,
@@ -292,8 +295,9 @@ class _ProjectListState extends ConsumerState<_ProjectList> {
       return _skeleton();
     }
     if (state.error != null && state.items.isEmpty) {
+      final s = ref.watch(kkStringsProvider);
       return RemoteError(
-        message: '连不上服务器',
+        message: s.errorNetwork,
         onRetry: () async =>
             ref.read(paginatedProjectsProvider.notifier).refresh(),
       );
@@ -413,6 +417,7 @@ class _RecommendStripState extends ConsumerState<_RecommendStrip> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(kkStringsProvider);
     final repo = ref.watch(projectRepositoryProvider);
     final history = ref.watch(appStateProvider).browseHistory;
 
@@ -444,7 +449,7 @@ class _RecommendStripState extends ConsumerState<_RecommendStrip> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _header(context, x.title),
+          _header(context, s, x.title),
           const SizedBox(height: KkSpacing.sm),
           SizedBox(
             height: 130, // 小卡:封面 84 + 标题/赞 + padding
@@ -481,7 +486,7 @@ class _RecommendStripState extends ConsumerState<_RecommendStrip> {
     );
   }
 
-  Widget _header(BuildContext context, String title) {
+  Widget _header(BuildContext context, KkStrings s, String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       child: Row(
@@ -493,7 +498,7 @@ class _RecommendStripState extends ConsumerState<_RecommendStrip> {
               text: TextSpan(
                 children: [
                   TextSpan(
-                    text: '因为你看过 ',
+                    text: s.becauseYouViewed,
                     style: KkType.bodySm.copyWith(
                       fontSize: 12,
                       color: KkColors.t3,
@@ -515,6 +520,7 @@ class _RecommendStripState extends ConsumerState<_RecommendStrip> {
           // 换一批(teal + refresh 图标,Tappable ≥44pt)
           Tappable(
             onTap: () => setState(() => _seed++),
+            semanticLabel: s.changeBatch,
             child: Container(
               // padding 撑到 ~44pt 热区,文字+图标视觉紧凑
               padding: const EdgeInsets.symmetric(
@@ -531,7 +537,7 @@ class _RecommendStripState extends ConsumerState<_RecommendStrip> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '换一批',
+                    s.changeBatch,
                     style: KkType.bodySm.copyWith(
                       fontSize: 12,
                       color: KkColors.teal,
@@ -634,7 +640,7 @@ class _RecommendCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${formatCount(project.likes)} 赞',
+                    const KkStrings.zh().likeCount(formatCount(project.likes)),
                     style: KkType.mono
                         .copyWith(fontSize: 10, color: KkColors.t3),
                   ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/tappable.dart';
+import '../../l10n/kk_strings.dart';
 
 /// 任务⑩B:共享 chip 组件 — me_screen 领域/话题统一用,达到发现页克制精致。
 ///
@@ -122,11 +123,12 @@ class KkChip extends StatelessWidget {
           if (removable && onRemove != null) ...[
             const SizedBox(width: KkSpacing.xs),
             // P2-无障碍:× 关闭是 icon-only 按钮,必须传 semanticLabel。
-            // 读屏会念「移除 <chip label>」。注:'移除' 当前硬编码,
-            // i18n 全量迁移时加入 KkStrings.remove + arb 条目。
+            // 读屏会念「移除 <chip label>」。P2-i18n:接 KkStrings.remove
+            // (2024-11 全量迁移;原 PR #25 TODO 已解)。
             Tappable(
               onTap: onRemove,
-              semanticLabel: '移除 $label',
+              semanticLabel:
+                  '${const KkStrings.zh().remove} $label',
               borderRadius: BorderRadius.circular(KkRadius.pill),
               child: Padding(
                 padding: const EdgeInsets.all(2),

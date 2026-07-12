@@ -11,6 +11,7 @@ import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/search_repository.dart';
+import '../../l10n/kk_strings.dart';
 import '../../providers/paginated_posts_provider.dart';
 import '../shared/remote_error.dart';
 import '../../providers/app_state_provider.dart';
@@ -120,6 +121,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
 
   // ── 顶栏:标题 + 搜索入口 ──
   Widget _topBar() {
+    final s = ref.watch(kkStringsProvider);
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: KkSpacing.lg,
@@ -128,7 +130,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
       child: Row(
         children: [
           // 任务②:标题后 6×6 teal 品牌点
-          Text('发现', style: KkType.h1),
+          Text(s.discoverTitle, style: KkType.h1),
           const SizedBox(width: 7),
           Container(
             width: 6,
@@ -141,6 +143,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
           const Spacer(),
           Tappable(
             onTap: () => context.push(KkRoutes.search),
+            semanticLabel: s.search,
             child: const Icon(Icons.search, size: 22, color: KkColors.t1),
           ),
         ],
@@ -150,6 +153,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
 
   // ── 双流 tab:推荐 / 关注 ──
   Widget _tabBar() {
+    final s = ref.watch(kkStringsProvider);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       decoration: const BoxDecoration(
@@ -164,9 +168,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
         indicatorSize: TabBarIndicatorSize.label,
         indicatorColor: KkColors.teal,
         indicatorWeight: 2,
-        tabs: const [
-          Tab(text: '推荐'),
-          Tab(text: '关注'),
+        tabs: [
+          Tab(text: s.recommendFeed),
+          Tab(text: s.followingFeed),
         ],
       ),
     );
@@ -308,13 +312,14 @@ class _RecommendFeedState extends ConsumerState<_RecommendFeed> {
 // 任务⑦ _RecommendStrip 做法)。铁律:coral 只给 take(此处全 teal/中性);
 // 无 emoji(用 # + Icon);零旁白(标题就是"今日话题");触控 ≥44pt(KkChip
 // 外层 Tappable 内置 minSize 44)。
-class _TodayTopicStrip extends StatelessWidget {
+class _TodayTopicStrip extends ConsumerWidget {
   final List<Topic> topics;
 
   const _TodayTopicStrip({required this.topics});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(kkStringsProvider);
     return Container(
       color: KkColors.bgCard,
       padding: const EdgeInsets.symmetric(vertical: KkSpacing.md),
@@ -322,7 +327,7 @@ class _TodayTopicStrip extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _header(context),
+          _header(context, s),
           const SizedBox(height: KkSpacing.sm),
           SizedBox(
             // 横列表高度跟齐 Tappable 的 minSize 44
@@ -365,13 +370,13 @@ class _TodayTopicStrip extends StatelessWidget {
     );
   }
 
-  Widget _header(BuildContext context) {
+  Widget _header(BuildContext context, KkStrings s) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       child: Row(
         children: [
           Text(
-            '今日话题',
+            s.todayTopic,
             style: KkType.body.copyWith(
               color: KkColors.t1,
               fontWeight: FontWeight.w600,
@@ -380,6 +385,7 @@ class _TodayTopicStrip extends StatelessWidget {
           const Spacer(),
           Tappable(
             onTap: () => context.push(KkRoutes.topicPlaza),
+            semanticLabel: s.topicPlaza,
             child: Container(
               // padding 撑到 ~44pt 热区
               padding: const EdgeInsets.symmetric(
@@ -390,7 +396,7 @@ class _TodayTopicStrip extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '话题广场',
+                    s.topicPlaza,
                     style: KkType.bodySm.copyWith(
                       fontSize: 12,
                       color: KkColors.teal,

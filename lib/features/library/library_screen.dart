@@ -9,6 +9,7 @@ import '../../core/widgets/skeletons.dart';
 import '../../core/widgets/tappable.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../l10n/kk_strings.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/remote_project_provider.dart';
 import '../../router/routes.dart';
@@ -124,6 +125,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }
 
   Widget _topBar() {
+    final s = ref.watch(kkStringsProvider);
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: KkSpacing.lg,
@@ -132,7 +134,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       child: Row(
         children: [
           // 任务②:标题后 6×6 teal 品牌点
-          Text('收藏', style: KkType.h1),
+          Text(s.libraryTitle, style: KkType.h1),
           const SizedBox(width: 7),
           Container(
             width: 6,
@@ -145,6 +147,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           const Spacer(),
           Tappable(
             onTap: () => context.push(KkRoutes.search),
+            semanticLabel: s.search,
             child: const Icon(Icons.search, size: 22, color: KkColors.t1),
           ),
         ],
@@ -153,6 +156,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }
 
   Widget _tabBar() {
+    final s = ref.watch(kkStringsProvider);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       decoration: const BoxDecoration(
@@ -167,9 +171,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         indicatorSize: TabBarIndicatorSize.label,
         indicatorColor: KkColors.teal,
         indicatorWeight: 2,
-        tabs: const [
-          Tab(text: '收藏'),
-          Tab(text: '素材'),
+        tabs: [
+          Tab(text: s.savedProjects),
+          Tab(text: s.savedTakeaways),
         ],
       ),
     );
@@ -213,6 +217,7 @@ class _TakeawayTab extends ConsumerStatefulWidget {
 class _TakeawayTabState extends ConsumerState<_TakeawayTab> {
   String _filter = 'all'; // all | text | file | link
 
+  // TODO(i18n): 迁移到 KkStrings — '全部' / '文本' / '文件' / '链接'
   static const _filters = <(String, String)>[
     ('全部', 'all'),
     ('文本', 'text'),
@@ -414,6 +419,7 @@ class _TakeawayTile extends ConsumerWidget {
   }
 
   void _showDeleteMenu(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(kkStringsProvider);
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
@@ -434,7 +440,7 @@ class _TakeawayTile extends ConsumerWidget {
                 ),
                 child: Center(
                   child: Text(
-                    '删除',
+                    s.delete,
                     style: KkType.body.copyWith(color: KkColors.coral),
                   ),
                 ),
@@ -446,7 +452,7 @@ class _TakeawayTile extends ConsumerWidget {
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: KkSpacing.md),
-                child: const Center(child: Text('取消', style: KkType.body)),
+                child: Center(child: Text(s.cancel, style: KkType.body)),
               ),
             ),
           ],
@@ -455,6 +461,7 @@ class _TakeawayTile extends ConsumerWidget {
     );
   }
 
+  // TODO(i18n): 迁移到 KkStrings — '文本' / '文件' / '链接' / '素材'
   (IconData, String, Color) _meta(String kind) {
     switch (kind) {
       case 'text':

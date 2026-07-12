@@ -11,6 +11,7 @@ import '../../data/api/users_api.dart';
 import '../../domain/models/models.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../l10n/kk_strings.dart';
 import '../../providers/app_state_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/remote_post_provider.dart';
@@ -67,6 +68,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(kkStringsProvider);
     final user = ref.watch(userByIdProvider(widget.userId));
     final projectRepo = ref.watch(projectRepositoryProvider);
     final postRepo = ref.watch(postRepositoryProvider);
@@ -158,7 +160,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           ),
           const SizedBox(height: KkSpacing.sm),
           // Tab 栏
-          _tabBar(projectCount, postCount),
+          _tabBar(s, projectCount, postCount),
           // Tab 内容
           Expanded(
             child: TabBarView(
@@ -179,6 +181,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   // (渐变 banner + 大头像 + inline 统计 + 右侧关注/编辑按钮)。
 
   Widget _followButton(bool isFollowing) {
+    final s = ref.watch(kkStringsProvider);
     return Tappable(
       onTap: () => ref
           .read(appStateProvider.notifier)
@@ -195,7 +198,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           border: isFollowing ? Border.all(color: KkColors.bd) : null,
         ),
         child: Text(
-          isFollowing ? '已关注' : '关注',
+          isFollowing ? s.unfollow : s.follow,
           style: TextStyle(
             color: isFollowing ? KkColors.t2 : Colors.white,
             fontSize: 13,
@@ -208,6 +211,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 
   Widget _editButton() {
+    final s = ref.watch(kkStringsProvider);
     return Tappable(
       onTap: () => context.push(KkRoutes.profileEdit),
       borderRadius: BorderRadius.circular(KkRadius.pill),
@@ -222,7 +226,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           border: Border.all(color: KkColors.bd),
         ),
         child: Text(
-          '编辑资料',
+          s.editProfile,
           style: TextStyle(
             color: KkColors.t2,
             fontSize: 13,
@@ -234,7 +238,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
-  Widget _tabBar(int projectCount, int postCount) {
+  Widget _tabBar(KkStrings s, int projectCount, int postCount) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: KkSpacing.lg),
       decoration: const BoxDecoration(
@@ -250,9 +254,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         indicatorColor: KkColors.teal,
         indicatorWeight: 2,
         tabs: [
+          // TODO(i18n): 迁移到 KkStrings — '动态 N' / '项目 N' 模板(postCount/projectCount 是 'N 动态' 顺序)
           Tab(text: '动态 $postCount'),
           Tab(text: '项目 $projectCount'),
-          const Tab(text: '收藏'),
+          Tab(text: s.save),
         ],
       ),
     );
@@ -261,6 +266,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   /// 更多操作 sheet(拉黑 / 举报)
   /// HANDOFF §3 零旁白:不写"举报后会怎样",只列动作。
   void _showMoreSheet(BuildContext context) {
+    final s = ref.watch(kkStringsProvider);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: KkColors.bgCard,
@@ -271,7 +277,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             if (_isMe) ...[
               _sheetItem(
                 icon: Icons.edit_outlined,
-                label: '编辑资料',
+                label: s.editProfile,
                 onTap: () {
                   Navigator.pop(context);
                   context.push(KkRoutes.profileEdit);
@@ -282,7 +288,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               // 不用珊瑚橙(避免视觉与 take 混淆)。
               _sheetItem(
                 icon: Icons.logout_outlined,
-                label: '退出登录',
+                label: s.logout,
                 color: KkColors.t1,
                 weight: FontWeight.w600,
                 // 修死按钮:原来只 pop(点了没反应)。无真 session,MVP 给二次确认 + 反馈。
@@ -291,24 +297,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   final ok = await showDialog<bool>(
                     context: context,
                     builder: (dctx) => AlertDialog(
-                      title: const Text('退出登录'),
+                      title: Text(s.logout),
+                      // TODO(i18n): 迁移到 KkStrings — '确定要退出登录吗?'
                       content: const Text('确定要退出登录吗？'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(dctx, false),
-                          child: const Text('取消',
-                              style: TextStyle(color: KkColors.t3)),
+                          child: Text(s.cancel,
+                              style: const TextStyle(color: KkColors.t3)),
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(dctx, true),
-                          child: const Text('确定',
-                              style: TextStyle(color: KkColors.teal)),
+                          child: Text(s.confirm,
+                              style: const TextStyle(color: KkColors.teal)),
                         ),
                       ],
                     ),
                   );
                   if (ok == true && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
+                      // TODO(i18n): 迁移到 KkStrings — '已退出登录'
                       const SnackBar(
                         content: Text('已退出登录'),
                         duration: Duration(seconds: 1),
@@ -322,12 +330,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             ] else ...[
               _sheetItem(
                 icon: Icons.person_remove_outlined,
-                label: '拉黑',
+                label: s.block,
                 color: KkColors.t1,
                 weight: FontWeight.w600,
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
+                    // TODO(i18n): 迁移到 KkStrings — '已拉黑'
                     SnackBar(
                       content: const Text('已拉黑'),
                       duration: const Duration(seconds: 1),
@@ -340,7 +349,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               const Divider(height: 1, color: KkColors.divider, indent: 56),
               _sheetItem(
                 icon: Icons.flag_outlined,
-                label: '举报',
+                label: s.report,
                 color: KkColors.t1,
                 weight: FontWeight.w600,
                 onTap: () {
@@ -356,7 +365,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             const Divider(height: 1, color: KkColors.divider),
             _sheetItem(
               icon: Icons.close,
-              label: '取消',
+              label: s.cancel,
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -414,11 +423,12 @@ class _PostsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 远程用户(UUID)→ GET /users/{id}/posts 三态;mock 用户→ byAuthor。
     if (_isRemote) {
+      final s = ref.watch(kkStringsProvider);
       return ref.watch(userPostsProvider(userId)).when(
             loading: () =>
                 const Center(child: CircularProgressIndicator(color: KkColors.teal)),
             error: (e, _) => RemoteError(
-              message: '动态加载失败',
+              message: s.errorLoad,
               onRetry: () async => ref.invalidate(userPostsProvider(userId)),
             ),
             data: (posts) => _list(context, posts),
@@ -460,11 +470,12 @@ class _ProjectsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 远程用户(UUID)→ GET /users/{id}/projects（仅 published）三态;mock→ byAuthor。
     if (_isRemote) {
+      final s = ref.watch(kkStringsProvider);
       return ref.watch(userProjectsProvider(userId)).when(
             loading: () =>
                 const Center(child: CircularProgressIndicator(color: KkColors.teal)),
             error: (e, _) => RemoteError(
-              message: '作品加载失败',
+              message: s.errorLoad,
               onRetry: () async => ref.invalidate(userProjectsProvider(userId)),
             ),
             data: (projects) => _list(projects),

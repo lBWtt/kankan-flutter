@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/kk_colors.dart';
 import '../../core/theme/tokens.dart';
+import '../../l10n/kk_strings.dart';
 
 /// 空状态组件 — HANDOFF §5:无 emoji,用图标 + 文案。
 ///
@@ -14,7 +16,10 @@ import '../../core/theme/tokens.dart';
 ///   - search    搜索空("没有结果"/"换个词试试")
 ///
 /// 零旁白(HANDOFF §3):只陈述事实,不写"快去发现更多吧"之类引导。
-class EmptyState extends StatelessWidget {
+///
+/// P2-i18n:文案接 [KkStrings](2024-11 全量迁移)。组件从 StatelessWidget
+/// 改为 ConsumerWidget 以 reactive 拿到当前 locale 的字符串。
+class EmptyState extends ConsumerWidget {
   final EmptyStateVariant variant;
   final String? title;
   final String? subtitle;
@@ -27,8 +32,9 @@ class EmptyState extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final meta = _meta();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(kkStringsProvider);
+    final meta = _meta(s);
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: KkSpacing.xxl,
@@ -61,42 +67,47 @@ class EmptyState extends StatelessWidget {
     );
   }
 
-  _EmptyMeta _meta() {
+  _EmptyMeta _meta(KkStrings s) {
     switch (variant) {
       case EmptyStateVariant.generic:
-        return const _EmptyMeta(
+        return _EmptyMeta(
           icon: Icons.inbox_outlined,
-          title: '暂无内容',
+          title: s.emptyGeneric,
           subtitle: null,
         );
       case EmptyStateVariant.feed:
-        return const _EmptyMeta(
+        return _EmptyMeta(
           icon: Icons.dynamic_feed_outlined,
-          title: '还没有动态',
+          title: s.emptyFeed,
+          // TODO(i18n): 迁移到 KkStrings — "关注的人发的动态在这里"
           subtitle: '关注的人发的动态在这里',
         );
       case EmptyStateVariant.saved:
-        return const _EmptyMeta(
+        return _EmptyMeta(
           icon: Icons.bookmark_border_outlined,
-          title: '还没收藏',
+          title: s.emptySaved,
+          // TODO(i18n): 迁移到 KkStrings — "收藏的项目在这里"
           subtitle: '收藏的项目在这里',
         );
       case EmptyStateVariant.takeaway:
-        return const _EmptyMeta(
+        return _EmptyMeta(
           icon: Icons.download_outlined,
-          title: '还没存过素材',
+          title: s.emptyTakeaway,
+          // TODO(i18n): 迁移到 KkStrings — "存下的素材在这里找回"
           subtitle: '存下的素材在这里找回',
         );
       case EmptyStateVariant.followers:
-        return const _EmptyMeta(
+        return _EmptyMeta(
           icon: Icons.people_outline,
-          title: '还没关注',
+          title: s.emptyFollowers,
+          // TODO(i18n): 迁移到 KkStrings — "关注的人在这里"
           subtitle: '关注的人在这里',
         );
       case EmptyStateVariant.search:
-        return const _EmptyMeta(
+        return _EmptyMeta(
           icon: Icons.search_off,
-          title: '没有结果',
+          title: s.emptySearch,
+          // TODO(i18n): 迁移到 KkStrings — "换个词试试"
           subtitle: '换个词试试',
         );
     }
